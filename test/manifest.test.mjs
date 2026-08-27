@@ -39,7 +39,12 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(client, /settings\.section/)
   assert.match(typert, /package: 'dsh-api-kit'/)
   assert.match(typert, /face: 'host'/)
-  assert.match(typert, /invocations: \[\]/)
+  assert.match(typert, /key: 'apiKitConfig'/)
+  assert.match(typert, /namespace: 'api-kit'/)
+  assert.match(typert, /'listOperations'/)
+  assert.match(typert, /'createOperation'/)
+  assert.match(typert, /name: item, wire: item/)
+  assert.match(typert, /schema: jsonSchema/)
 })
 
 test('bundle patch inserts exactly the plugin row', async () => {
@@ -47,6 +52,12 @@ test('bundle patch inserts exactly the plugin row', async () => {
   assert.match(patch, /- insert:/)
   assert.match(patch, /id: dsh-api-kit/)
   assert.match(patch, /name: dsh-api-kit/)
+})
+
+test('T05 Typert manifest exposes only safe configuration methods', async () => {
+  const typert = await read('lib/typert.host.js')
+  assert.match(typert, /service: 'apiKitConfig'/)
+  assert.doesNotMatch(typert, /api_call|api_kits|api_operations/)
 })
 
 test('T03 package files include Registry runtime artifacts', () => {
@@ -62,6 +73,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/config-validation.js',
     'lib/credential-adapter.js',
     'lib/configuration.js',
+    'lib/operation-validation.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

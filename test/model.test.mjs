@@ -83,7 +83,7 @@ test('显式 operationId 优先且安全归一化，重复参数按 location/nam
   assert.equal(operation.id, 'local-op-1')
   assert.equal(operation.operationId, 'orders.get')
   assert.deepEqual(operation.parameters.map((item) => item.name), ['id', 'q'])
-  assert.equal(operation.parameters[0].required, false)
+  assert.equal(operation.parameters[0].required, true)
   assert.deepEqual(operation.policy.allowMethods, [])
   assert.equal(operation.policy.allowAgentCall, false)
   assert.equal(operation.policy.requiresConfirmation, true)

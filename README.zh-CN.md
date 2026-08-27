@@ -4,17 +4,19 @@
 
 ## 当前状态
 
-当前版本完成 **T04 服务目标、环境和认证配置基础（0.1.0）**，在 T01 Bundle、T02 领域模型和 T03 Registry 存储之上增加了 DSH 无关的配置核心。目前提供：
+当前版本完成 **T05 手工 API Operation 与最小 API Kit 管理（0.1.0）**，在 T01 Bundle、T02 领域模型、T03 Registry 存储和 T04 配置基础之上增加了严格的 Operation/Kit CRUD、安全视图和设置页管理界面。目前提供：
 
 - Host / Client / Typert 三个 bundle 入口；
 - 输入栏“API 套件”占位入口；
 - 设置页“API 套件”占位页面；
 - Registry 的规范化加载、schema 迁移、完整性校验、原子保存、备份、损坏恢复和内存快照；
-- Service Target、Environment 和 Auth Profile 的 Host 配置门面；
+- Service Target、Environment、Auth Profile、Operation 和 API Kit 的 Host 配置门面；
+- Operation 严格校验、启用/禁用、Kit 关联、最小 Kit CRUD、双向引用重算和安全视图；
+- Typert/Host RPC 配置通道，以及支持 Kit/Operation 增删改查的设置页；
 - HTTP/HTTPS、Host 白名单、生产环境 Agent 默认关闭、认证字段校验和删除引用保护；
 - 可选的 OpenAPI 导入存档策略：默认不保存，也可显式选择脱敏或原文存档。
 
-当前版本**尚未实现** API 套件 CRUD、`api_*` Agent 工具或真实 HTTP 请求；配置核心尚未接入 DSH Typert/RPC 或浏览器表单。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
+当前版本尚未实现 `api_*` Agent 工具、真实 HTTP 请求、会话级套件选择、OpenAPI 导入和完整套件高级策略；这些能力分别留给 T06–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
 
 后续开发任务和需求基线见：
 

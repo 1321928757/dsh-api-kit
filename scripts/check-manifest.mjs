@@ -22,6 +22,7 @@ const expectedFiles = [
   'lib/config-validation.js',
   'lib/credential-adapter.js',
   'lib/configuration.js',
+  'lib/operation-validation.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -58,7 +59,14 @@ if (!/export const name\s*=\s*['"]dsh-api-kit['"]/.test(host)) fail('Host entry 
 if (!/configuration\.js/.test(host)) fail('Host entry must reference configuration service')
 if (!/id:\s*['"]dsh-api-kit['"]/.test(client)) fail('Client entry must load with dsh-api-kit id')
 if (!/package:\s*['"]dsh-api-kit['"]/.test(typert) || !/face:\s*['"]host['"]/.test(typert)) fail('Typert manifest must declare package and host face')
-if (!/invocations:\s*\[\]/.test(typert)) fail('T01 Typert manifest should not expose business invocations')
+for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation']) {
+  if (!new RegExp(`['"]${method}['"]`).test(typert)) fail(`Typert manifest is missing ${method}`)
+}
+if (!/key:\s*['"]apiKitConfig['"]/.test(typert) || !/namespace:\s*['"]api-kit['"]/.test(typert)) fail('Typert manifest must declare the api-kit namespace')
+for (const wire of ['id', 'patch', 'enabled', 'input', 'kitId', 'operationIds']) {
+  if (!new RegExp(`name: item, wire: item`).test(typert)) fail(`Typert manifest does not generate named wire mappings for ${wire}`)
+}
+if (!/schema: jsonSchema/.test(typert)) fail('Typert result codec must accept every JSON result shape')
 
 if (process.exitCode) process.exit()
 console.log('[check-manifest] manifest checks passed')

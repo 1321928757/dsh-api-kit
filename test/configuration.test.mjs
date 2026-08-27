@@ -84,6 +84,29 @@ test('credential provider may be unavailable for CRUD but request resolution fai
   await assert.rejects(config.resolveAuthForRequest('token'), (error) => error.code === 'CREDENTIAL_NOT_CONFIGURED')
 })
 
+test('auth profile patch preserves omitted fields and returns a safe view', async () => {
+  const { config } = await loadedSetup()
+  await config.createAuthProfile({ id: 'token', type: 'bearer', secretRef: 'credential:token', name: 'Token' })
+  const updated = await config.updateAuthProfile('token', { enabled: false })
+  assert.equal(updated.type, 'bearer')
+  assert.equal(updated.enabled, false)
+  assert.equal('secretRef' in updated, false)
+  assert.equal(config.getSnapshot().authProfiles[0].type, 'bearer')
+  assert.equal('secretRef' in config.getSnapshot().authProfiles[0], false)
+})
+
+test('environment and service target patches preserve omitted fields', async () => {
+  const { config } = await loadedSetup()
+  await config.createEnvironment({ id: 'dev', name: 'Development', baseUrl: 'https://api.example.test', production: true })
+  const environment = await config.updateEnvironment('dev', { description: 'patched' })
+  assert.equal(environment.name, 'Development')
+  assert.equal(environment.production, true)
+  await config.createServiceTarget({ id: 'backend', name: 'Backend', environmentIds: ['dev'], defaultEnvironmentId: 'dev' })
+  const target = await config.updateServiceTarget('backend', { description: 'patched' })
+  assert.deepEqual(target.environmentIds, ['dev'])
+  assert.equal(target.name, 'Backend')
+})
+
 test('none profiles cannot store secrets and query auth requires explicit enablement', async () => {
   const { config } = await loadedSetup()
   await config.createAuthProfile({ id: 'none', type: 'none' })
