@@ -48,13 +48,15 @@ test('bundle patch inserts exactly the plugin row', async () => {
   assert.match(patch, /name: dsh-api-kit/)
 })
 
-test('T01 package files include release artifacts only', () => {
+test('T03 package files include Registry runtime artifacts', () => {
   const expected = new Set([
     'lib/index.js',
     'lib/typert.host.js',
     'lib/client.js',
     'lib/model.js',
     'lib/normalizers.js',
+    'lib/registry-store.js',
+    'lib/registry-archive.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

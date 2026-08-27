@@ -16,6 +16,8 @@ const expectedFiles = [
   'lib/client.js',
   'lib/model.js',
   'lib/normalizers.js',
+  'lib/registry-store.js',
+  'lib/registry-archive.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',

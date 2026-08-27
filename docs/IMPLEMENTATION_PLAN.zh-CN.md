@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T02 领域模型和纯函数已完成，准备进入 T03
+- **当前阶段**：T03 Registry 持久化与迁移已完成，准备进入 T04
 - **最后更新**：2026-08-27
 
 ---
@@ -124,7 +124,7 @@ T02 + T08 + T09 → T15
 | T00 | 运行时能力核对与任务拆解 | 准备 | 已完成 | 无 |
 | T01 | 创建发布骨架和最小 Bundle | M0 | 已完成 | T00 |
 | T02 | 领域模型、归一化和纯函数 | M0 | 已完成 | T01 |
-| T03 | Registry 持久化与迁移 | M0 | 未开始 | T02 |
+| T03 | Registry 持久化与迁移 | M0 | 已完成 | T02 |
 | T04 | 服务目标、环境和认证配置 | M0 | 未开始 | T02/T03 |
 | T05 | 手工 API 操作 CRUD | M0 | 未开始 | T02/T03/T04 |
 | T06 | 会话级 API 套件选择器 | M0 | 未开始 | T03/T04/T05 |
@@ -1022,6 +1022,15 @@ pnpm pack --dry-run
 - **需求覆盖**：FR-KIT-001、FR-OP-001、FR-ENV-001、FR-AUTH-001、NFR-006、NFR-007；T02 领域模型、归一化、默认只读策略、大小限制和测试基线。
 - **未完成/风险**：中文 ID 会被安全归一化为 ASCII 片段，纯中文名称可能退化为 fallback；T02 尚未实现 Registry 文件读写和 DSH RPC。当前 `package.json` 的 `files` 已加入两个纯函数模块，后续发布包仍需同步验证。
 - **下一步建议**：进入 T03，基于 `createEmptyRegistry` / `migrateRegistry` / `normalizeRegistry` 实现原子写入、加载、损坏文件保护、回滚和 schema 迁移测试。
+
+### 2026-08-27 / T03
+
+- **完成内容**：新增 DSH 无关的 Registry 存储核心；实现默认路径、注入式文件系统适配、旧 schema/legacy 字段迁移、实体 ID 与引用完整性校验、原子临时文件写入、Windows 目标替换兼容、备份轮转、损坏文件保留、空安全恢复、结构化诊断、失败回滚、最新快照和进程内串行更新；新增独立 OpenAPI 归档策略，默认 `none`，支持脱敏和显式允许的 `raw`。
+- **变更文件**：`lib/registry-store.js`、`lib/registry-archive.js`、`test/helpers/memory-fs.mjs`、`test/registry-store.test.mjs`、`package.json`、`scripts/check-manifest.mjs`、`test/manifest.test.mjs`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`、本文件。
+- **测试命令与结果**：四个新增文件 `node --check` 通过；`node test\\registry-store.test.mjs` 17/17 通过；`pnpm test` 23/23 子测试通过；`pnpm run check` 通过。
+- **需求覆盖**：NFR-001、NFR-005、FR-KIT-002、FR-SESSION-005，以及 T03 的原子保存、恢复、迁移、快照和显式 OpenAPI 存档边界。
+- **未完成/风险**：当前尚未接入 DSH Host `fs/settings` 等 Service；不承诺多进程并发写入、fsync 或跨进程锁；真实 Windows 文件系统冒烟未在当前环境执行，内存适配器已覆盖目标替换语义；加载迁移默认只在内存中生效，不自动改写旧文件，后续可由设置流程显式保存。
+- **下一步建议**：进入 T04，先重新 Inspect 当前 DSH Host Service/凭据能力，再实现服务目标、环境和认证 Profile 的 CRUD 与安全视图。
 
 ---
 

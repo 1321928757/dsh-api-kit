@@ -4,13 +4,15 @@
 
 ## Current status
 
-This release is the **T01 project skeleton (0.1.0)**. It validates the DSH profile bundle packaging and loading contract and currently provides only:
+This release includes the **T03 Registry persistence foundation (0.1.0)** on top of the T01 bundle skeleton and T02 domain model. It currently provides:
 
 - Host, Client, and Typert bundle entry points;
 - an `API Kit` placeholder in the conversation input row;
-- an `API Kit` placeholder settings page.
+- an `API Kit` placeholder settings page;
+- normalized Registry loading, schema migration, integrity checks, atomic saves, backups, damaged-file recovery, and in-memory snapshots;
+- optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
 
-It does **not yet** implement API Kit CRUD, OpenAPI import, authentication profiles, `api_*` Agent tools, or real HTTP requests. It does not save or read credentials.
+The Registry core is not yet connected to a DSH Host Service. API Kit CRUD, authentication profiles, `api_*` Agent tools, and real HTTP requests are not implemented, and credentials are never saved or read.
 
 The requirements baseline and incremental implementation plan are available here:
 
