@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T03 Registry 持久化与迁移已完成，准备进入 T04
+- **当前阶段**：T04 服务目标、环境和认证配置已完成，准备进入 T05
 - **最后更新**：2026-08-27
 
 ---
@@ -125,7 +125,7 @@ T02 + T08 + T09 → T15
 | T01 | 创建发布骨架和最小 Bundle | M0 | 已完成 | T00 |
 | T02 | 领域模型、归一化和纯函数 | M0 | 已完成 | T01 |
 | T03 | Registry 持久化与迁移 | M0 | 已完成 | T02 |
-| T04 | 服务目标、环境和认证配置 | M0 | 未开始 | T02/T03 |
+| T04 | 服务目标、环境和认证配置 | M0 | 已完成 | T02/T03 |
 | T05 | 手工 API 操作 CRUD | M0 | 未开始 | T02/T03/T04 |
 | T06 | 会话级 API 套件选择器 | M0 | 未开始 | T03/T04/T05 |
 | T07 | Agent 发现与描述工具 | M0 | 未开始 | T05/T06 |
@@ -1031,6 +1031,15 @@ pnpm pack --dry-run
 - **需求覆盖**：NFR-001、NFR-005、FR-KIT-002、FR-SESSION-005，以及 T03 的原子保存、恢复、迁移、快照和显式 OpenAPI 存档边界。
 - **未完成/风险**：当前尚未接入 DSH Host `fs/settings` 等 Service；不承诺多进程并发写入、fsync 或跨进程锁；真实 Windows 文件系统冒烟未在当前环境执行，内存适配器已覆盖目标替换语义；加载迁移默认只在内存中生效，不自动改写旧文件，后续可由设置流程显式保存。
 - **下一步建议**：进入 T04，先重新 Inspect 当前 DSH Host Service/凭据能力，再实现服务目标、环境和认证 Profile 的 CRUD 与安全视图。
+
+### 2026-08-27 / T04
+
+- **完成内容**：完成 DSH 无关的服务目标、环境和认证配置核心；新增严格环境/认证校验、配置引用检查、Host-only 凭据适配器、配置 CRUD 门面和安全视图；支持多环境/认证绑定、生产环境默认关闭 Agent、私网显式 opt-in、API Key Query 默认关闭、受控 Header 拦截、请求时重新解析凭据，以及被引用实体删除保护。
+- **变更文件**：`lib/config-validation.js`、`lib/credential-adapter.js`、`lib/configuration.js`、`lib/errors.js`、`lib/model.js`、`test/environment.test.mjs`、`test/auth.test.mjs`、`test/configuration.test.mjs`、`package.json`、`scripts/check-manifest.mjs`、`test/manifest.test.mjs`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`、本文件。
+- **测试命令与结果**：`node --check` 全部 T04 模块通过；`node test\\environment.test.mjs` 4/4 通过；`node test\\auth.test.mjs` 5/5 通过；`node test\\configuration.test.mjs` 7/7 通过；既有 T01/T02/T03 测试继续通过；已完成 Inspect 当前 `credentials`、`fs`、`settings`、`sandboxPolicy` Host 契约。
+- **需求覆盖**：FR-ENV-001～004、FR-AUTH-001～004、安全需求 6.1～6.3，以及 T04 的多环境绑定、安全视图、按次凭据解析和引用一致性。
+- **未完成/风险**：T04 暂不接入 DSH Host `apiKitConfig` Service、Typert/RPC、Client 表单、Operation CRUD 或 HTTP 执行；凭据写入与 Registry 写入不是跨服务原子事务，适配器需保证自身持久化语义；完整 DNS/连接级 SSRF 和响应治理留给 T09。
+- **下一步建议**：进入 T05，先实现手工 API Operation CRUD，再基于本配置门面增加套件/操作安全视图和 Typert 接线。
 
 ---
 

@@ -4,15 +4,17 @@
 
 ## 当前状态
 
-当前版本完成 **T03 Registry 持久化基础（0.1.0）**，在 T01 Bundle 骨架和 T02 领域模型之上增加了 DSH 无关的本地 Registry 存储核心。目前提供：
+当前版本完成 **T04 服务目标、环境和认证配置基础（0.1.0）**，在 T01 Bundle、T02 领域模型和 T03 Registry 存储之上增加了 DSH 无关的配置核心。目前提供：
 
 - Host / Client / Typert 三个 bundle 入口；
 - 输入栏“API 套件”占位入口；
 - 设置页“API 套件”占位页面；
 - Registry 的规范化加载、schema 迁移、完整性校验、原子保存、备份、损坏恢复和内存快照；
+- Service Target、Environment 和 Auth Profile 的 Host 配置门面；
+- HTTP/HTTPS、Host 白名单、生产环境 Agent 默认关闭、认证字段校验和删除引用保护；
 - 可选的 OpenAPI 导入存档策略：默认不保存，也可显式选择脱敏或原文存档。
 
-当前版本**尚未实现** API 套件 CRUD、认证配置、`api_*` Agent 工具或真实 HTTP 请求；Registry 核心尚未接入 DSH Host Service，且不会保存或读取凭据。
+当前版本**尚未实现** API 套件 CRUD、`api_*` Agent 工具或真实 HTTP 请求；配置核心尚未接入 DSH Typert/RPC 或浏览器表单。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
 
 后续开发任务和需求基线见：
 

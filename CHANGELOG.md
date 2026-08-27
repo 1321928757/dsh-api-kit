@@ -7,4 +7,5 @@
 - Added placeholder API Kit composer control and settings section.
 - Added a DSH-independent Registry store with schema migration, integrity validation, atomic writes, backups, damaged-file recovery, rollback-safe snapshots, and serialized updates.
 - Added explicit OpenAPI archive modes: `none` by default, `sanitized`, and opt-in `raw`.
-- Deferred DSH Host Service wiring, API Kit CRUD, credentials, tools, and HTTP execution to later implementation tasks.
+- Added Host-side service target, environment, and authentication profile configuration with safe views, reference protection, production opt-in, and request-time credential resolution.
+- Deferred DSH Typert/RPC wiring, API Kit CRUD, tools, and HTTP execution to later implementation tasks.

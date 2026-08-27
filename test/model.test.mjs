@@ -128,6 +128,7 @@ test('environment 从 baseUrl 推导 host，不接受危险协议、查询和凭
   assert.equal(environment.baseUrl, 'https://api.example.test/v1')
   assert.deepEqual(environment.allowedHosts, ['api.example.test'])
   assert.equal(environment.production, true)
+  assert.equal(environment.agentEnabled, false)
   assert.equal(normalizeEnvironment({ baseUrl: 'file:///etc/passwd' }).baseUrl, '')
   assert.equal(normalizeEnvironment({ baseUrl: 'https://user:pass@example.test' }).baseUrl, '')
   assert.equal(normalizeEnvironment({ baseUrl: 'https://example.test?a=1' }).baseUrl, '')

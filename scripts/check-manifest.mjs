@@ -18,6 +18,10 @@ const expectedFiles = [
   'lib/normalizers.js',
   'lib/registry-store.js',
   'lib/registry-archive.js',
+  'lib/errors.js',
+  'lib/config-validation.js',
+  'lib/credential-adapter.js',
+  'lib/configuration.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -51,6 +55,7 @@ const host = await read('lib/index.js')
 const client = await read('lib/client.js')
 const typert = await read('lib/typert.host.js')
 if (!/export const name\s*=\s*['"]dsh-api-kit['"]/.test(host)) fail('Host entry must export dsh-api-kit name')
+if (!/configuration\.js/.test(host)) fail('Host entry must reference configuration service')
 if (!/id:\s*['"]dsh-api-kit['"]/.test(client)) fail('Client entry must load with dsh-api-kit id')
 if (!/package:\s*['"]dsh-api-kit['"]/.test(typert) || !/face:\s*['"]host['"]/.test(typert)) fail('Typert manifest must declare package and host face')
 if (!/invocations:\s*\[\]/.test(typert)) fail('T01 Typert manifest should not expose business invocations')

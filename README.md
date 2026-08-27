@@ -4,15 +4,17 @@
 
 ## Current status
 
-This release includes the **T03 Registry persistence foundation (0.1.0)** on top of the T01 bundle skeleton and T02 domain model. It currently provides:
+This release includes the **T04 service target, environment, and authentication configuration foundation (0.1.0)** on top of the T01 bundle, T02 domain model, and T03 Registry store. It currently provides:
 
 - Host, Client, and Typert bundle entry points;
 - an `API Kit` placeholder in the conversation input row;
 - an `API Kit` placeholder settings page;
 - normalized Registry loading, schema migration, integrity checks, atomic saves, backups, damaged-file recovery, and in-memory snapshots;
+- a Host-side configuration facade for service targets, environments, and authentication profiles;
+- HTTP/HTTPS and host allowlist validation, production Agent opt-in, auth field validation, and referenced-delete protection;
 - optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
 
-The Registry core is not yet connected to a DSH Host Service. API Kit CRUD, authentication profiles, `api_*` Agent tools, and real HTTP requests are not implemented, and credentials are never saved or read.
+The configuration core is not yet connected to DSH Typert/RPC or browser forms. API Kit CRUD, `api_*` Agent tools, and real HTTP requests are not implemented. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
 
 The requirements baseline and incremental implementation plan are available here:
 

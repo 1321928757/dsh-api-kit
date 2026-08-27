@@ -31,7 +31,8 @@ test('T01 source entries have the expected identities', async () => {
   const typert = await read('lib/typert.host.js')
 
   assert.match(host, /export const name = 'dsh-api-kit'/)
-  assert.match(host, /dsh-api-kit\] plugin loaded/)
+  assert.match(host, /configuration\.js/)
+  assert.match(host, /apiKitConfig/)
   assert.match(client, /window\.__ModuleLoader__\.load/)
   assert.match(client, /id: 'dsh-api-kit'/)
   assert.match(client, /conversation\.input\.left/)
@@ -57,6 +58,10 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/normalizers.js',
     'lib/registry-store.js',
     'lib/registry-archive.js',
+    'lib/errors.js',
+    'lib/config-validation.js',
+    'lib/credential-adapter.js',
+    'lib/configuration.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',
