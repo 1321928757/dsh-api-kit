@@ -16,7 +16,15 @@
 - HTTP/HTTPS、Host 白名单、生产环境 Agent 默认关闭、认证字段校验和删除引用保护；
 - 可选的 OpenAPI 导入存档策略：默认不保存，也可显式选择脱敏或原文存档。
 
-当前版本尚未实现 `api_*` Agent 工具、真实 HTTP 请求、会话级套件选择、OpenAPI 导入和完整套件高级策略；这些能力分别留给 T06–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
+当前版本已完成 T06 会话级 API Kit/Environment 选择。`api_*` Agent 工具、真实 HTTP 请求、OpenAPI 导入和完整套件高级策略仍未实现，继续留给 T07–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
+
+### 会话级套件选择
+
+- 输入栏 `conversation.input.left` 的“API 套件”入口使用独立槽位 ID `dsh-api-kit`，排序为 `93`，与 `dsh-mysql` 等控制共存。
+- 当前会话可以多选 API Kit，并选择一个共同 Environment；选择只保存在 Host 运行时的 `sessionId → { activeKitIds, environmentId }` 内存映射，不写入 Registry，重启 DSH 后需要重新激活。
+- 默认建议最多激活 2 个 Kit；超过后仍允许保存，但会显示模型可见操作范围扩大的警告。
+- Host 每次读取和后续解析都会重新校验 Kit/Operation/Environment 的启用状态、Agent 权限和环境兼容性；停用或删除后的旧选择不会继续生效。
+- 选择器只展示安全元数据和环境名称，不展示 base URL、凭据引用或 secret。生产环境会显示风险标识，并遵循 Host 的 Agent 开关。
 
 后续开发任务和需求基线见：
 

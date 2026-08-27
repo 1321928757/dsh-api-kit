@@ -43,6 +43,12 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(typert, /namespace: 'api-kit'/)
   assert.match(typert, /'listOperations'/)
   assert.match(typert, /'createOperation'/)
+  assert.match(typert, /'getSessionActivation'/)
+  assert.match(typert, /'setSessionActivation'/)
+  assert.match(typert, /'clearSessionActivation'/)
+  assert.match(client, /getSessionActivation/)
+  assert.match(client, /setSessionActivation/)
+  assert.match(client, /clearSessionActivation/)
   assert.match(typert, /name: item, wire: item/)
   assert.match(typert, /schema: jsonSchema/)
 })
@@ -74,6 +80,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/credential-adapter.js',
     'lib/configuration.js',
     'lib/operation-validation.js',
+    'lib/session-selection.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

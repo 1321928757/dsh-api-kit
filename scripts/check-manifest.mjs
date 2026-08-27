@@ -23,6 +23,7 @@ const expectedFiles = [
   'lib/credential-adapter.js',
   'lib/configuration.js',
   'lib/operation-validation.js',
+  'lib/session-selection.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -59,7 +60,7 @@ if (!/export const name\s*=\s*['"]dsh-api-kit['"]/.test(host)) fail('Host entry 
 if (!/configuration\.js/.test(host)) fail('Host entry must reference configuration service')
 if (!/id:\s*['"]dsh-api-kit['"]/.test(client)) fail('Client entry must load with dsh-api-kit id')
 if (!/package:\s*['"]dsh-api-kit['"]/.test(typert) || !/face:\s*['"]host['"]/.test(typert)) fail('Typert manifest must declare package and host face')
-for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation']) {
+for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation']) {
   if (!new RegExp(`['"]${method}['"]`).test(typert)) fail(`Typert manifest is missing ${method}`)
 }
 if (!/key:\s*['"]apiKitConfig['"]/.test(typert) || !/namespace:\s*['"]api-kit['"]/.test(typert)) fail('Typert manifest must declare the api-kit namespace')

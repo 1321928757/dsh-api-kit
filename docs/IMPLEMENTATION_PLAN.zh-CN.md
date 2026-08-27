@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T05 手工 API Operation CRUD 已完成，准备进入 T06
+- **当前阶段**：T06 会话级 API Kit 选择器已完成，准备进入 T07
 - **最后更新**：2026-08-27
 
 ---
@@ -121,7 +121,7 @@ T02 + T08 + T09 → T15
 | T03 | Registry 持久化与迁移 | M0 | 已完成 | T02 |
 | T04 | 服务目标、环境和认证配置 | M0 | 已完成 | T02/T03 |
 | T05 | 手工 API 操作 CRUD | M0 | 已完成 | T02/T03/T04 |
-| T06 | 会话级 API 套件选择器 | M0 | 未开始 | T03/T04/T05 |
+| T06 | 会话级 API 套件选择器 | M0 | 已完成 | T03/T04/T05 |
 | T07 | Agent 发现与描述工具 | M0 | 未开始 | T05/T06 |
 | T08 | 固定目标的只读 HTTP 执行器 | M0 | 未开始 | T04/T05 |
 | T09 | 安全策略、SSRF、响应治理和审计 | M0 | 未开始 | T08 |
@@ -171,7 +171,7 @@ git diff --check
 - T05 的 Client 仍使用最小的手工 Remote descriptor；最终类型生成和完整 remote assembly 仍需结合发布 profile 做集成验证。
 - Registry schemaVersion 保持 1；历史大写 Operation ID 和非法参数位置在加载时保持兼容，新写入严格拒绝。
 - 当前 `harness.handle` 仅在运行时可见时注册兼容 RPC；Typert Gateway 仍是正式目标通道。
-- T06 应先核对会话 Scope 与 `conversation.input.left` 的完整 props，再实现会话级 Kit 选择。
+- T06 已完成运行时核对与会话级 Kit 选择；当前 Typert/Client 真实安装烟测仍需在不影响用户 3080 的隔离 Profile 中执行。
 
 ---
 
@@ -181,9 +181,20 @@ git diff --check
 
 ### T06：会话级 API 套件选择器
 
-- 核对输入栏 Slot 的完整 props 和会话 Scope；
-- 保存 `sessionId → activeKitIds/environment`，实现选择器和失效提示；
-- 不在 Client 持有 secret，不允许绕过 Host 策略。
+**状态：已完成**
+
+**对应需求**：FR-SESSION-001～005、FR-ENV-004、MVP 验收标准 2/8。
+
+- 已通过当前运行时 Inspect 确认 `conversation.input.left` 为 `session` scope 的 list Slot，组件收到 `sessionId` 标准 props，且输入区域 owner props 为 `session`/`input`。
+- 已通过当前运行时 Inspect 确认 `sessions` 服务可提供 session scope/binding；T06 采用 Slot 标准 `sessionId`，不依赖 DOM、路由或全局浏览器存储。
+- Host 配置门面新增 `getSessionActivation`、`setSessionActivation`、`clearSessionActivation` 与内部 `resolveSessionActivation`；选择保存在内存 Map，不污染 Registry，`agent/disposed` 时清理。
+- 每次读取和权威解析都重新检查 Kit/Operation/Environment 的存在、启用状态、Agent 权限、Kit 环境约束和多 Kit 共同环境；超过 2 个 Kit 允许继续保存但返回范围扩大警告。
+- Client 输入栏选择器使用槽位 ID `dsh-api-kit`、排序 `93`，支持多选 Kit、共同 Environment、生产标记、失效提示、空状态引导、应用/清除、Esc 和外部点击关闭；设置页配置变更通过 `dsh-api-kit:config-changed` 联动刷新。
+- 三处 Typert/RPC descriptor 已统一为单 `args` wire，结果保持宽松 JSON codec；不暴露 base URL、secretRef 或凭据值。
+
+**设计边界**：T06 不实现 `api_*` Agent Tools、HTTP 请求、OpenAPI 导入、SSRF/DNS、动态上下文、审计和写操作确认；这些留给 T07～T10。
+
+**测试与验收**：新增 `test/session-selection.test.mjs`，覆盖 session 隔离、环境推导/交集、超过 2 个 Kit、停用失效、生产环境警告、清理和安全视图；全量 `pnpm test` 通过，清单检查和入口语法检查通过。
 
 ### T07：Agent 发现与描述工具
 
@@ -232,6 +243,17 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **需求覆盖**：FR-OP-001～005、FR-IMPORT-006、FR-KIT-004，以及 T05 手工 CRUD、关系一致性、安全视图和 RPC/设置页基线。
 - **未完成/风险**：不实现 Agent Tools、会话级选择、HTTP 执行、SSRF/DNS、OpenAPI 导入和动态上下文；当前 Typert/Client remote 需要隔离 profile 做真实加载验证，未重启用户的 `http://127.0.0.1:3080`。
 - **下一步建议**：进入 T06，先 Inspect `conversation.input.left` 的 session props 与可用 Scope/Remote，再实现会话级 API Kit 选择器。
+
+---
+
+### 2026-08-27 / T06
+
+- **完成内容**：完成会话级 API Kit/Environment 选择器；Host 内存 Map 按 `sessionId` 隔离状态，设置/读取/解析均以当前 Registry 为权威进行重校验，并在 Agent dispose 时清理；Client 支持多选 Kit、共同环境、生产标识、失效诊断和范围扩大提示。
+- **变更文件**：`lib/session-selection.js`、`lib/configuration.js`、`lib/index.js`、`lib/typert.host.js`、`lib/client.js`、`package.json`、`test/session-selection.test.mjs`、`test/manifest.test.mjs`、`scripts/check-manifest.mjs`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md`、本文件。
+- **运行时依据**：已 Inspect `conversation.input.left`（session scope、标准 `sessionId` props）、`sessions` Service 和 `agent/disposed` Event；参考已安装 `dsh-mysql` 的 session selection 生命周期实现。
+- **测试命令与结果**：`node --check lib\\*.js`（入口语法通过）；`node test\\session-selection.test.mjs` 6/6 通过；`pnpm test` 55/55 通过；`pnpm run check` 通过；`git diff --check` 通过。
+- **未完成/风险**：不实现 Agent Tools、HTTP/OpenAPI、SSRF/DNS、动态上下文和审计；选择状态为进程内存态，重启后需重新激活；隔离 Profile 的 T06 新包运行时烟测待完成。
+- **下一步建议**：进入 T07，实现固定 `api_kits`、`api_operations`、`api_describe` Agent Tools，并在每次工具调用前复用 `resolveSessionActivation`。
 
 ---
 

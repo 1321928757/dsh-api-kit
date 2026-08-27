@@ -10,4 +10,5 @@
 - Added Host-side service target, environment, and authentication profile configuration with safe views, reference protection, production opt-in, and request-time credential resolution.
 - Added manual Operation CRUD, minimal API Kit CRUD, strict write validation, Kit/Operation link reconciliation, safe views, and Host-only configuration RPC.
 - Added a settings page for creating, editing, enabling/disabling, associating, and deleting Operations and Kits without exposing credentials.
-- Deferred `api_*` Agent tools, session selection, OpenAPI import, and HTTP execution to later implementation tasks.
+- Added T06 session-scoped API Kit and Environment selection in `conversation.input.left`, with Host-owned in-memory state, multi-Kit selection, compatibility diagnostics, lifecycle cleanup, and authoritative stale-state revalidation.
+- Deferred `api_*` Agent tools, OpenAPI import, and HTTP execution to later implementation tasks.

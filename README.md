@@ -16,7 +16,15 @@ This release includes the **T05 manual Operation and minimal API Kit management 
 - HTTP/HTTPS and host allowlist validation, production Agent opt-in, auth field validation, and referenced-delete protection;
 - optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
 
-`api_*` Agent tools, real HTTP requests, session-scoped Kit selection, OpenAPI import, and complete Kit policy management are not implemented yet; those capabilities are scheduled for T06–T12. The manual test entry waits for the future request executor. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
+T06 session-scoped Kit and Environment selection is now implemented. `api_*` Agent tools, real HTTP requests, OpenAPI import, and complete Kit policy management remain deferred to T07–T12. The manual test entry waits for the future request executor. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
+
+### Session-scoped Kit selection
+
+- The `conversation.input.left` “API Kit” control uses the independent slot id `dsh-api-kit`, at order `93`, so it can coexist with controls such as `dsh-mysql`.
+- A session can select multiple API Kits and one common Environment. The selection is held only in a Host runtime `sessionId → { activeKitIds, environmentId }` map, not in the Registry; restarting DSH clears it.
+- Two Kits are the recommended maximum. More are allowed, but the selector displays a warning that the model-visible operation scope has expanded.
+- Host reads and future resolution revalidate Kit/Operation/Environment enabled state, Agent permissions, and environment compatibility on every access, so stale selections cannot remain usable.
+- The selector shows safe metadata and environment names only. It never shows base URLs, credential references, or secrets. Production environments are visibly marked and still follow the Host Agent switch.
 
 The requirements baseline and incremental implementation plan are available here:
 

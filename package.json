@@ -33,6 +33,7 @@
     "lib/credential-adapter.js",
     "lib/configuration.js",
     "lib/operation-validation.js",
+    "lib/session-selection.js",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",
