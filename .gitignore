@@ -1,5 +1,8 @@
 node_modules/
 *.tgz
 *.log
+storages/
+audit/
+*.bak*
 .tmp/
 .DS_Store

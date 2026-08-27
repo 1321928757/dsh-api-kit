@@ -44,6 +44,14 @@ export function createMemoryFs(options = {}) {
       ensureParent(resolved)
       files.set(resolved, typeof data === 'string' ? data : Buffer.from(data).toString())
     },
+    async appendFile(target, data, encoding) {
+      const resolved = normalize(target)
+      record('appendFile', resolved, { encoding })
+      shouldFail('appendFile', resolved)
+      ensureParent(resolved)
+      const previous = files.get(resolved) ?? ''
+      files.set(resolved, previous + (typeof data === 'string' ? data : Buffer.from(data).toString()))
+    },
     async rename(source, target) {
       const from = normalize(source)
       const to = normalize(target)

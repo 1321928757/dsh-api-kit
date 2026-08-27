@@ -62,4 +62,16 @@ test('environment rejects malformed host lists and allows explicit non-standard 
   assert.equal(environment.allowPrivilegedPort, true)
 })
 
+test('environment validates and normalizes explicit private CIDR allowlists', () => {
+  const environment = validateEnvironmentInput({
+    baseUrl: 'http://10.1.2.3:8080',
+    allowPrivateNetwork: true,
+    allowPrivilegedPort: true,
+    allowedCidrs: ['10.0.0.1/8', 'FC00::1/7'],
+  })
+  assert.deepEqual(environment.allowedCidrs, ['10.0.0.1/8', 'FC00::1/7'])
+  assert.throws(() => validateEnvironmentInput({ baseUrl: 'https://api.example.test', allowedCidrs: ['not-cidr'] }), (error) => error.code === 'INVALID_CIDR')
+  assert.throws(() => validateEnvironmentInput({ baseUrl: 'https://api.example.test', allowedCidrs: '10.0.0.0/8' }), (error) => error.code === 'INVALID_CIDR_LIST')
+})
+
 console.log('Environment tests complete')

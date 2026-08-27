@@ -1,53 +1,44 @@
 # dsh-api-kit
 
-> A local-first DeepSeek Harness plugin for API Kits, OpenAPI import, session-scoped activation, and safe API calls.
+> A local-first DeepSeek Harness profile bundle for API Kits, OpenAPI definitions, session-scoped enablement, and controlled API calls.
 
-## Current status
+## Status
 
-This release includes the **T05 manual Operation and minimal API Kit management foundation (0.1.0)** on top of the T01 bundle, T02 domain model, T03 Registry store, and T04 configuration foundation. It currently provides:
+T09 is complete on top of the T08 fixed-target read-only executor. The bundle now provides execution-time DNS/IP/CIDR SSRF checks, pinned-IP connections, redirect denial, recursive JSON redaction, and Host-only local JSONL auditing. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
 
-- Host, Client, and Typert bundle entry points;
-- an `API Kit` placeholder in the conversation input row;
-- an `API Kit` placeholder settings page;
-- normalized Registry loading, schema migration, integrity checks, atomic saves, backups, damaged-file recovery, and in-memory snapshots;
-- a Host-side configuration facade for service targets, environments, authentication profiles, Operations, and API Kits;
-- strict Operation validation, enable/disable controls, Kit association, minimal Kit CRUD, link reconciliation, and safe views;
-- a Typert/Host RPC configuration channel and a settings page for Kit/Operation CRUD;
-- HTTP/HTTPS and host allowlist validation, production Agent opt-in, auth field validation, and referenced-delete protection;
-- optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
+- Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
+- `api_call` accepts only a stable `operationId` and declared parameters, and currently executes GET/HEAD only.
+- The target is built only from a registered Environment `baseUrl` and Operation path. The model cannot provide a URL, host, session ID, proxy, or redirect policy.
+- The Environment hostname must be allowlisted. Every DNS answer is checked; loopback, link-local, metadata, reserved/documentation addresses, and high-risk IPv4-mapped IPv6 addresses are rejected.
+- RFC1918, IPv6 ULA, and CGNAT addresses additionally require `allowPrivateNetwork: true` and a matching `allowedCidrs` entry. A hostname allowlist alone never enables private access.
+- The pinned transport connects to a checked IP while retaining the registered hostname for HTTPS SNI and the HTTP Host header. Production requests do not use a proxy, implicit retry, or automatic redirect.
+- 301/302/303/307/308 return the safe `REDIRECT_NOT_ALLOWED` error without exposing or following `Location`.
+- JSON success and error bodies are recursively redacted using defaults plus Operation `policy.redactKeys` before depth, array, string, key, and byte governance. Response headers are not returned.
+- Every `api_call` policy rejection and network attempt is written to `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`. Audit records use an allowlist, lazily retain 14 days by default, and never contain credentials, headers, URL, body, stack, or cause. Audit failures do not affect the business result.
 
-T08 fixed-target read-only calls are now implemented alongside the T07 discovery tools: `api_kits`, `api_operations`, `api_describe`, and `api_call`. `api_call` accepts only a stable `operationId` and declared parameters, executes GET/HEAD, builds the target from the registered Environment, resolves credentials per call on the Host, and enforces host allowlists, timeouts, and response-size limits. OpenAPI import, DNS/IP-level SSRF checks, recursive response redaction, auditing, dynamic context, and write operations remain deferred. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
+## Session-scoped Kit selection
 
-### Session-scoped Kit selection
+- The `conversation.input.left` API Kit control uses slot ID `dsh-api-kit` and order `93`.
+- A session can activate multiple Kits and one common Environment. Selection is held in a Host-only in-memory map keyed by the authoritative session ID.
+- Every read and tool call revalidates Kit/Operation/Environment state, Agent permissions, and environment compatibility.
+- The selector and Agent tools do not expose base URLs, host allowlists, credential references, or secrets.
 
-- The `conversation.input.left` “API Kit” control uses the independent slot id `dsh-api-kit`, at order `93`, so it can coexist with controls such as `dsh-mysql`.
-- A session can select multiple API Kits and one common Environment. The selection is held only in a Host runtime `sessionId → { activeKitIds, environmentId }` map, not in the Registry; restarting DSH clears it.
-- Two Kits are the recommended maximum. More are allowed, but the selector displays a warning that the model-visible operation scope has expanded.
-- Host reads and future resolution revalidate Kit/Operation/Environment enabled state, Agent permissions, and environment compatibility on every access, so stale selections cannot remain usable.
-- The selector shows safe metadata and environment names only. It never shows base URLs, credential references, or secrets. Production environments are visibly marked and still follow the Host Agent switch.
+## Agent tools
 
-### T07 Agent discovery tools
+- `api_kits`: list safe Kit and Environment summaries for the current session.
+- `api_operations`: discover Operations by keyword, Tag, method, Service Target, and pagination.
+- `api_describe`: return the complete safe calling contract for a stable `operationId`.
+- `api_call`: call a fixed GET/HEAD Operation using only declared path/query/business-header parameters.
 
-- The Host registers three fixed global tools: `api_kits`, `api_operations`, and `api_describe`; it does not create one dynamic tool per Operation.
-- Tools obtain the current session from `exec.agent.id` and revalidate activation before every call. The model cannot provide or forge a `sessionId`.
-- `api_kits` returns safe Kit/Environment summaries; `api_operations` supports keyword, Tag, HTTP method, Service Target, and pagination filters; `api_describe` accepts only a discovered stable `operationId`.
-- Only enabled, Agent-allowed Operations in active Kits that satisfy the Operation/Kit read or write policy intersection are discoverable or describable. Shared Operations are deterministically deduplicated.
-- Tool results are capped at 64 KiB. Operation pages stop at complete item boundaries and expose pagination metadata; oversized descriptions fail closed with `DESCRIPTION_TOO_LARGE`.
-- T07 only discovers and describes. It does not make HTTP requests, accept arbitrary URLs, or expose `baseUrl`, host allowlists, credential references, secrets, or internal stacks.
-- T08 `api_call` executes only discovered GET/HEAD Operations. Targets come solely from the Environment, declared parameters are validated at runtime, credentials resolve on the Host, and responses are projected as bounded JSON or text. T08 does not follow redirects; DNS/IP-level SSRF checks, recursive redaction, and auditing remain T09 work.
+Recommended flow: `api_kits → api_operations → api_describe → api_call`. The model must not guess URLs, hosts, credentials, or bypass session activation.
 
-The requirements baseline and incremental implementation plan are available here:
-
-- [`docs/REQUIREMENTS.zh-CN.md`](./docs/REQUIREMENTS.zh-CN.md)
-- [`docs/IMPLEMENTATION_PLAN.zh-CN.md`](./docs/IMPLEMENTATION_PLAN.zh-CN.md)
-
-## Installation (future release)
+## Installation
 
 ```powershell
 dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.0
 ```
 
-During development, install the local tgz into an isolated test profile instead of replacing the profile currently in use.
+For development, install the local tgz into an isolated test profile rather than replacing a profile currently in use.
 
 ## Development checks
 
@@ -57,26 +48,9 @@ pnpm run check
 pnpm pack --dry-run
 ```
 
-## Direction
+## Security boundary
 
-- API definitions are organized as API Kits;
-- the current session selects one or more Kits and an environment from the composer;
-- the Agent discovers and calls APIs through `api_kits → api_operations → api_describe → api_call`;
-- the Host resolves a fixed operation and environment and never accepts an arbitrary URL from the model;
-- read-only access is the default and credentials stay on the Host;
-- OpenAPI import, SSRF protection, response redaction, auditing, and a future MCP adapter will follow the implementation plan.
-
-## References
-
-- [DeepSeek Harness development docs](https://deepseek-harness.github.io/deepseek-harness/develop/basic/)
-- [Develop a Tool](https://deepseek-harness.github.io/deepseek-harness/develop/basic/tool)
-- [Plugin configuration](https://deepseek-harness.github.io/deepseek-harness/develop/basic/config)
-- [Bundle packaging and installation](https://deepseek-harness.github.io/deepseek-harness/develop/basic/publish)
-- [Official DSH repository](https://github.com/deepseek-ai/deepseek-harness)
-- [DSH plugin authoring template skill](https://github.com/fuzhengwei/xfg-skills-dsp-plugin-template)
-- [dsh-mysql reference implementation](https://github.com/1321928757/dsh-mysql)
-- [OpenAPI Specification](https://spec.openapis.org/oas/latest.html)
-- [MCP Tools specification](https://modelcontextprotocol.io/specification/latest/server/tools)
+T09 still does not implement OpenAPI import, dynamic context, write operations, OAuth2, file upload, SSE/WebSocket, automatic redirects, implicit retries, or an independent MCP Server. Private access requires explicit matching CIDRs. This bundle is not an arbitrary-URL internet or intranet proxy.
 
 ## License
 

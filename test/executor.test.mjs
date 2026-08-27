@@ -51,6 +51,7 @@ async function setup(options = {}) {
 
 function fakeTransport(response, calls = []) {
   return {
+    handlesResolution: true,
     async request(request) {
       calls.push(request)
       if (typeof response === 'function') return response(request)
@@ -162,7 +163,7 @@ test('stale session, host allowlist, cancellation and transport errors are safe'
   const aborted = await createApiKitHttpExecutor(fresh.config, { transport: fakeTransport(response()) }).execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec('session-a', controller.signal))
   assert.equal(aborted.error.code, 'ABORTED')
 
-  const failure = createApiKitHttpExecutor(fresh.config, { transport: { async request() { throw new Error('private failure') } } })
+  const failure = createApiKitHttpExecutor(fresh.config, { transport: { handlesResolution: true, async request() { throw new Error('private failure') } } })
   const result = await failure.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())
   assert.equal(result.error.code, 'NETWORK_ERROR')
 })

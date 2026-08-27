@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T08 固定目标只读 API 调用已完成，准备进入 T09
+- **当前阶段**：T09 安全策略、SSRF、响应治理和审计已完成，准备进入 T10
 - **最后更新**：2026-08-27
 
 ---
@@ -123,8 +123,8 @@ T02 + T08 + T09 → T15
 | T05 | 手工 API 操作 CRUD | M0 | 已完成 | T02/T03/T04 |
 | T06 | 会话级 API 套件选择器 | M0 | 已完成 | T03/T04/T05 |
 | T07 | Agent 发现与描述工具 | M0 | 已完成 | T05/T06 |
-| T08 | 固定目标的只读 HTTP 执行器 | M0 | 未开始 | T04/T05 |
-| T09 | 安全策略、SSRF、响应治理和审计 | M0 | 未开始 | T08 |
+| T08 | 固定目标的只读 HTTP 执行器 | M0 | 已完成 | T04/T05 |
+| T09 | 安全策略、SSRF、响应治理和审计 | M0 | 已完成 | T08 |
 | T10 | 动态上下文和 MVP 端到端验收 | M0 | 未开始 | T06/T07/T08/T09 |
 | T11 | OpenAPI JSON 导入器 | M1 | 未开始 | T02/T03/T05 |
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 未开始 | T11 |
@@ -214,9 +214,16 @@ git diff --check
 
 ### T08/T09：只读执行与安全边界
 
+**T08 状态：已完成；T09 状态：已完成**
+
 - 只接受固定 `operationId + params`；
-- 实现 Host 侧 transport、认证、超时、响应治理、SSRF 和审计；
-- 测试使用 fake transport，不访问真实公司服务。
+- Host 侧 transport、认证、超时、响应治理、SSRF 和审计均已实现；
+- 测试使用 fake resolver/transport，不访问真实公司服务；
+- T09 使用 DNS 全量解析、IP/CIDR 分类、固定 IP Node HTTP transport，避免“预解析后仍由 fetch 按 hostname 重解析”的 DNS rebinding 假修复；
+- JSON 响应（含 HTTP 错误体）在投影前递归脱敏，并执行深度、数组、字符串、对象数量和字节边界；
+- 每次调用和策略拒绝通过 Host-only JSONL sink 记录，审计写失败不影响业务结果。
+
+**T09 设计边界**：仍只执行 GET/HEAD，不实现 OpenAPI 导入、动态上下文、写操作、OAuth、SSE/WebSocket、自动重定向或独立 MCP Server。
 
 ---
 
@@ -288,6 +295,19 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **测试命令与结果**：`node --check` T08 模块通过；`node --test test/executor.test.mjs` 7/7 通过；T07 discovery 8/8 通过；认证测试 5/5 通过。全量 `pnpm test`、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 待最终验收后记录。
 - **未完成/风险**：T08 不实现 DNS 解析结果/IP/CIDR 级 SSRF、DNS rebinding、递归响应脱敏、持久化审计、动态上下文、OpenAPI 导入、自动重定向或写操作；`credential-adapter` 已切换为当前 DSH credentials seam 的字符串引用形状。
 - **下一步建议**：进入 T09，集中实现 DNS/IP SSRF、重定向安全、递归响应治理和审计，并继续复用 T08 的执行计划与 transport seam。
+
+---
+
+### 2026-08-27 / T09
+
+- **状态：已完成**。新增 `lib/ip.js`、`lib/ssrf.js`、`lib/redaction.js`、`lib/audit-log.js`；扩展 Environment `allowedCidrs` 和 Operation 响应治理/脱敏策略；新增 pinned Node HTTP/HTTPS transport。
+- **安全修订**：修复 Host 默认 fs 服务与审计 sink 契约不兼容、截断 JSON 原文脱敏旁路、IPv4-translated/NAT64/IPv4-compatible/6to4 地址分类、注入 transport 跳过 DNS 校验、非默认端口 Host 头和审计前置拒绝丢失等问题；pinned transport 强制 `Accept-Encoding: identity`，避免压缩响应在有界读取前膨胀。
+- **SSRF 与重定向**：每次调用对 DNS 全部返回地址分类校验，覆盖 IPv4、IPv6、IPv4-mapped IPv6、loopback、link-local、metadata、RFC1918、ULA、CGNAT、保留/文档网段；私网必须同时配置 `allowPrivateNetwork` 和匹配 CIDR。生产 transport 连接已校验固定 IP，保留登记 hostname 的 Host/SNI，不使用代理、隐式重试或自动重定向。
+- **响应治理**：JSON 成功及错误体在输出前递归替换敏感字段，再按深度、数组、字符串、对象数量和总字节治理；不返回 Response Header 或 `Location`。
+- **审计**：Host-only JSONL sink 写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`，字段白名单、默认 14 日懒清理、串行 append；调用拒绝和网络尝试均走 executor finally，审计写失败不影响工具结果。
+- **测试与验收结果**：新增 SSRF 15 项、Redaction 4 项、Audit 3 项；全量 `pnpm test` 94/94 通过；`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 通过。
+- **未完成/风险**：仍不实现动态上下文、OpenAPI 导入、写操作、OAuth、SSE/WebSocket、自动重定向和独立 MCP Server；DNS/固定连接能力通过插件私有 seam 实现，未来若 DSH 提供官方能力可替换。
+- **下一步建议**：进入 T10，完成动态上下文和 MVP 端到端验收。
 
 ---
 
