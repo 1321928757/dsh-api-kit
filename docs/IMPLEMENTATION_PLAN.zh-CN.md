@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T01 Bundle 骨架已完成，准备进入 T02
+- **当前阶段**：T02 领域模型和纯函数已完成，准备进入 T03
 - **最后更新**：2026-08-27
 
 ---
@@ -123,7 +123,7 @@ T02 + T08 + T09 → T15
 |---|---|---|---|---|
 | T00 | 运行时能力核对与任务拆解 | 准备 | 已完成 | 无 |
 | T01 | 创建发布骨架和最小 Bundle | M0 | 已完成 | T00 |
-| T02 | 领域模型、归一化和纯函数 | M0 | 未开始 | T01 |
+| T02 | 领域模型、归一化和纯函数 | M0 | 已完成 | T01 |
 | T03 | Registry 持久化与迁移 | M0 | 未开始 | T02 |
 | T04 | 服务目标、环境和认证配置 | M0 | 未开始 | T02/T03 |
 | T05 | 手工 API 操作 CRUD | M0 | 未开始 | T02/T03/T04 |
@@ -1013,6 +1013,15 @@ pnpm pack --dry-run
 - **需求覆盖**：NFR-004、NFR-005、NFR-009 的包结构、加载契约和占位 UI 基线。
 - **未完成/风险**：尚未启动隔离测试 profile 的 Web UI 做浏览器冒烟；当前 DSH Web 进程未被本任务重启，避免影响用户正在使用的 `http://127.0.0.1:3080`；T01 暂不实现业务 RPC、Tool、Registry、网络和凭据。
 - **下一步建议**：进入 T02，先实现 DSH 无关的领域模型、归一化、schemaVersion 和纯函数测试；之后再补充 Typert 业务 RPC。
+
+### 2026-08-27 / T02
+
+- **完成内容**：新增 DSH 无关的 `normalizers.js` 和 `model.js`；建立 API Kit、Operation、Service Target、Environment、Auth Profile、Registry 规范化模型；实现稳定 operation key/id、路径参数补全、请求体/响应 schema 归一化、方法/认证/策略默认值、边界限制和 legacy registry 迁移入口。
+- **变更文件**：`lib/normalizers.js`、`lib/model.js`、`test/model.test.mjs`、`package.json`、`scripts/check-manifest.mjs`、`test/manifest.test.mjs`。
+- **测试命令与结果**：`node --check lib\\model.js`、`node --check lib\\normalizers.js` 通过；`pnpm test` 6 个子测试 / 16 组断言通过；`pnpm run check` 通过。
+- **需求覆盖**：FR-KIT-001、FR-OP-001、FR-ENV-001、FR-AUTH-001、NFR-006、NFR-007；T02 领域模型、归一化、默认只读策略、大小限制和测试基线。
+- **未完成/风险**：中文 ID 会被安全归一化为 ASCII 片段，纯中文名称可能退化为 fallback；T02 尚未实现 Registry 文件读写和 DSH RPC。当前 `package.json` 的 `files` 已加入两个纯函数模块，后续发布包仍需同步验证。
+- **下一步建议**：进入 T03，基于 `createEmptyRegistry` / `migrateRegistry` / `normalizeRegistry` 实现原子写入、加载、损坏文件保护、回滚和 schema 迁移测试。
 
 ---
 

@@ -53,6 +53,8 @@ test('T01 package files include release artifacts only', () => {
     'lib/index.js',
     'lib/typert.host.js',
     'lib/client.js',
+    'lib/model.js',
+    'lib/normalizers.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',
