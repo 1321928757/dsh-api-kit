@@ -132,7 +132,9 @@ test('policy intersection never grants a disabled write Operation', () => {
 test('raw Agent tools expose strict schemas, safe envelopes, and no sessionId argument', async () => {
   const { config } = await setup()
   const tools = createApiKitAgentTools(config)
-  assert.deepEqual(Object.keys(tools), ['apiKits', 'apiOperations', 'apiDescribe'])
+  assert.deepEqual(Object.keys(tools), ['apiKits', 'apiOperations', 'apiDescribe', 'apiCall'])
+  assert.equal(tools.apiCall.parameters.required[0], 'operationId')
+  assert.equal('url' in tools.apiCall.parameters.properties, false)
   assert.deepEqual(tools.apiDescribe.parameters.required, ['operationId'])
   assert.equal('sessionId' in tools.apiOperations.parameters.properties, false)
   assert.equal(tools.apiOperations.output.schema.additionalProperties, true)

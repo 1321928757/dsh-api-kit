@@ -76,6 +76,18 @@ test('T07 registers fixed Agent discovery tools without HTTP execution', async (
   assert.doesNotMatch(tools, /fetch\(|http:\/\//)
 })
 
+test('T08 adds a fixed-target read-only api_call executor and transport', async () => {
+  const host = await read('lib/index.js')
+  const tools = await read('lib/agent-tools.js')
+  const executor = await read('lib/executor.js')
+  const transport = await read('lib/transport.js')
+  assert.match(tools, /name: 'api_call'/)
+  assert.match(executor, /createApiKitHttpExecutor/)
+  assert.match(transport, /redirect: 'manual'/)
+  assert.match(executor, /READ_METHODS/)
+  assert.doesNotMatch(tools, /name: 'web_fetch'/)
+})
+
 test('T03 package files include Registry runtime artifacts', () => {
   const expected = new Set([
     'lib/index.js',
@@ -93,6 +105,8 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/session-selection.js',
     'lib/discovery.js',
     'lib/agent-tools.js',
+    'lib/executor.js',
+    'lib/transport.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

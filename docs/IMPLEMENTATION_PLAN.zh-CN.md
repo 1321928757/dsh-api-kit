@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T06 会话级 API Kit 选择器已完成，准备进入 T07
+- **当前阶段**：T08 固定目标只读 API 调用已完成，准备进入 T09
 - **最后更新**：2026-08-27
 
 ---
@@ -276,6 +276,18 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **测试命令与结果**：`node --check` T07 入口通过；`node --test test/discovery.test.mjs` 8/8 通过；全量 `pnpm test`、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 待最终验收后记录。
 - **未完成/风险**：T07 不实现 `api_call`、HTTP transport、SSRF/DNS、响应治理、审计、动态上下文和 OpenAPI 导入；64 KiB 输出上限是发现工具边界，真实响应限制留给 T08/T09。
 - **下一步建议**：进入 T08，实现固定 `operationId + 参数` 的 Host 只读 HTTP 执行器，并继续复用当前会话权威解析和策略门禁。
+
+---
+
+### 2026-08-27 / T08
+
+- **完成内容**：完成固定 `api_call` Agent Tool 和 Host 只读执行器。工具只接受稳定 `operationId`、path/query/header 参数，目标由已登记 Environment 的 `baseUrl` 与 Operation path 固定拼接；仅允许 GET/HEAD，拒绝任意 URL、host、sessionId、body、Cookie 参数和需要确认的调用。
+- **变更文件**：新增 `lib/executor.js`、`lib/transport.js`、`test/executor.test.mjs`；修改 `lib/agent-tools.js`、`lib/index.js`、`lib/credential-adapter.js`、`package.json`、`scripts/check-manifest.mjs`、`test/manifest.test.mjs`、`test/discovery.test.mjs`、`test/auth.test.mjs`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md` 和本文件。
+- **运行时依据**：确认 `tools.register(definition)`、`exec.agent.id`、`exec.signal`；确认当前 DSH 没有可直接复用的通用出站 HTTP Provider 和 DNS/IP SSRF Helper，因此 T08 使用插件私有、可注入的 Host `fetch` transport，不注册全局 `ctx.web` Provider。
+- **执行与安全边界**：每次调用重新解析会话激活和 Registry；复用 T07 的 Operation/Kit/Target/Environment 策略门禁；仅使用 Environment 固定目标和显式 host allowlist；认证通过 Host-only adapter 按次解析；transport 使用 manual redirect；响应流式按字节限额读取并投影为 JSON 或文本；错误不返回 URL、Header、secret、body、stack 或 cause。
+- **测试命令与结果**：`node --check` T08 模块通过；`node --test test/executor.test.mjs` 7/7 通过；T07 discovery 8/8 通过；认证测试 5/5 通过。全量 `pnpm test`、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 待最终验收后记录。
+- **未完成/风险**：T08 不实现 DNS 解析结果/IP/CIDR 级 SSRF、DNS rebinding、递归响应脱敏、持久化审计、动态上下文、OpenAPI 导入、自动重定向或写操作；`credential-adapter` 已切换为当前 DSH credentials seam 的字符串引用形状。
+- **下一步建议**：进入 T09，集中实现 DNS/IP SSRF、重定向安全、递归响应治理和审计，并继续复用 T08 的执行计划与 transport seam。
 
 ---
 

@@ -16,7 +16,7 @@
 - HTTP/HTTPS、Host 白名单、生产环境 Agent 默认关闭、认证字段校验和删除引用保护；
 - 可选的 OpenAPI 导入存档策略：默认不保存，也可显式选择脱敏或原文存档。
 
-当前版本已完成 T07 Agent 发现与描述工具：`api_kits`、`api_operations`、`api_describe`。真实 HTTP 请求、`api_call`、OpenAPI 导入和完整套件高级策略仍未实现，继续留给 T08–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
+当前版本已完成 T08 固定目标只读调用：`api_kits`、`api_operations`、`api_describe` 和 `api_call`。`api_call` 只接受稳定 `operationId` 与已声明参数，仅执行 GET/HEAD；Host 根据登记的 Environment 拼接目标、按次解析认证、强制 host 白名单、超时和响应大小限制。OpenAPI 导入、DNS/IP 级 SSRF、递归响应脱敏、审计、动态上下文和写操作仍留给后续任务。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
 
 ### 会话级套件选择
 
@@ -34,6 +34,7 @@
 - 只有激活 Kit 中启用、允许 Agent 且满足 Operation/Kit 只读或写策略交集的 Operation 才会被发现或描述；共享 Operation 会确定性去重。
 - 工具结果限制为最多 64 KiB；搜索结果按完整条目截断并返回分页信息，过大的详情 fail-closed 为 `DESCRIPTION_TOO_LARGE`。
 - T07 只负责发现和描述，不发起 HTTP，不接受任意 URL，不暴露 `baseUrl`、host 白名单、认证引用、secret 或内部堆栈。
+- T08 `api_call` 只执行当前会话已发现的 GET/HEAD Operation；目标固定来自 Environment，业务参数按声明校验，认证只在 Host 侧解析，响应按字节上限投影为 JSON 或文本。T08 不跟随重定向，DNS/IP 级 SSRF、递归脱敏和审计留给 T09。
 
 后续开发任务和需求基线见：
 

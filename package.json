@@ -1,7 +1,7 @@
 {
   "name": "dsh-api-kit",
   "version": "0.1.0",
-  "description": "DeepSeek Harness API Kit bundle skeleton: a local-first foundation for registering API suites and OpenAPI-backed tools. 当前版本仅提供插件骨架，尚未实现 API 调用。",
+  "description": "DeepSeek Harness API Kit bundle: local-first API Kit configuration, discovery, and fixed-target read-only API calls.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -36,6 +36,8 @@
     "lib/session-selection.js",
     "lib/discovery.js",
     "lib/agent-tools.js",
+    "lib/executor.js",
+    "lib/transport.js",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",

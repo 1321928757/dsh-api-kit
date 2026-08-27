@@ -13,10 +13,10 @@ function fakeCredentials() {
   const values = new Map()
   const calls = []
   const service = {
-    async resolve(ref) { calls.push(['resolve', ref]); return values.get(ref.name) },
-    async describe(ref) { calls.push(['describe', ref]); return { configured: values.has(ref.name), source: 'fake', writable: true } },
-    async set(ref, value) { calls.push(['set', ref]); values.set(ref.name, value) },
-    async unset(ref) { calls.push(['unset', ref]); values.delete(ref.name) },
+    async resolve(ref) { calls.push(['resolve', ref]); return values.get(ref) },
+    async describe(ref) { calls.push(['describe', ref]); return { configured: values.has(ref), source: 'fake', writable: true } },
+    async set(ref, value) { calls.push(['set', ref]); values.set(ref, value) },
+    async unset(ref) { calls.push(['unset', ref]); values.delete(ref) },
   }
   return { service, values, calls }
 }
@@ -70,7 +70,7 @@ test('configuration resolves credentials only on Host and query auth remains dis
   await store.load()
   const config = createConfigurationService({ store, credentialAdapter: createCredentialAdapter({ service: fake.service }) })
   await config.createAuthProfile({ id: 'bearer', type: 'bearer', secretRef: 'cred:bearer' })
-  await fake.service.set({ name: 'cred:bearer' }, 'do-not-leak')
+  await fake.service.set('cred:bearer', 'do-not-leak')
   const view = await config.describeAuthProfile('bearer')
   assert.equal(view.hasSecret, true)
   assert.equal(JSON.stringify(view).includes('do-not-leak'), false)

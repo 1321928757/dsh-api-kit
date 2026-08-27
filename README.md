@@ -16,7 +16,7 @@ This release includes the **T05 manual Operation and minimal API Kit management 
 - HTTP/HTTPS and host allowlist validation, production Agent opt-in, auth field validation, and referenced-delete protection;
 - optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
 
-T07 Agent discovery and description tools are now implemented: `api_kits`, `api_operations`, and `api_describe`. Real HTTP requests, `api_call`, OpenAPI import, and complete Kit policy management remain deferred to T08–T12. The manual test entry waits for the future request executor. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
+T08 fixed-target read-only calls are now implemented alongside the T07 discovery tools: `api_kits`, `api_operations`, `api_describe`, and `api_call`. `api_call` accepts only a stable `operationId` and declared parameters, executes GET/HEAD, builds the target from the registered Environment, resolves credentials per call on the Host, and enforces host allowlists, timeouts, and response-size limits. OpenAPI import, DNS/IP-level SSRF checks, recursive response redaction, auditing, dynamic context, and write operations remain deferred. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
 
 ### Session-scoped Kit selection
 
@@ -34,6 +34,7 @@ T07 Agent discovery and description tools are now implemented: `api_kits`, `api_
 - Only enabled, Agent-allowed Operations in active Kits that satisfy the Operation/Kit read or write policy intersection are discoverable or describable. Shared Operations are deterministically deduplicated.
 - Tool results are capped at 64 KiB. Operation pages stop at complete item boundaries and expose pagination metadata; oversized descriptions fail closed with `DESCRIPTION_TOO_LARGE`.
 - T07 only discovers and describes. It does not make HTTP requests, accept arbitrary URLs, or expose `baseUrl`, host allowlists, credential references, secrets, or internal stacks.
+- T08 `api_call` executes only discovered GET/HEAD Operations. Targets come solely from the Environment, declared parameters are validated at runtime, credentials resolve on the Host, and responses are projected as bounded JSON or text. T08 does not follow redirects; DNS/IP-level SSRF checks, recursive redaction, and auditing remain T09 work.
 
 The requirements baseline and incremental implementation plan are available here:
 
