@@ -1,0 +1,12 @@
+# dsh-api-kit bundle patch.
+#
+# Installed through the official CLI:
+#
+#   dsh plugin --profile <name> add dsh-api-kit
+#
+# The profile boot merges this patch over the base composition and mounts
+# the package under the same id/name. Keep the row name equal to the package
+# name so the profile resolves it from its own node_modules directory.
+- insert:
+    - id: dsh-api-kit
+      name: dsh-api-kit
