@@ -24,6 +24,8 @@ const expectedFiles = [
   'lib/configuration.js',
   'lib/operation-validation.js',
   'lib/session-selection.js',
+  'lib/discovery.js',
+  'lib/agent-tools.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -64,6 +66,10 @@ for (const method of ['listKits', 'createKit', 'listOperations', 'createOperatio
   if (!new RegExp(`['"]${method}['"]`).test(typert)) fail(`Typert manifest is missing ${method}`)
 }
 if (!/key:\s*['"]apiKitConfig['"]/.test(typert) || !/namespace:\s*['"]api-kit['"]/.test(typert)) fail('Typert manifest must declare the api-kit namespace')
+for (const tool of ['api_kits', 'api_operations', 'api_describe']) {
+  if (!new RegExp(`name:\\s*['"]${tool}['"]`).test(await read('lib/agent-tools.js'))) fail(`Agent tool is missing ${tool}`)
+}
+if (!/createApiKitAgentTools/.test(host) || !/tools\.register/.test(host)) fail('Host entry must register Agent discovery tools')
 for (const wire of ['id', 'patch', 'enabled', 'input', 'kitId', 'operationIds']) {
   if (!new RegExp(`name: item, wire: item`).test(typert)) fail(`Typert manifest does not generate named wire mappings for ${wire}`)
 }

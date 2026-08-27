@@ -66,6 +66,16 @@ test('T05 Typert manifest exposes only safe configuration methods', async () => 
   assert.doesNotMatch(typert, /api_call|api_kits|api_operations/)
 })
 
+test('T07 registers fixed Agent discovery tools without HTTP execution', async () => {
+  const host = await read('lib/index.js')
+  const tools = await read('lib/agent-tools.js')
+  assert.match(host, /export const inject = \['tools'\]/)
+  assert.match(host, /createApiKitAgentTools/)
+  assert.match(host, /ctx\.tools\.register/)
+  for (const name of ['api_kits', 'api_operations', 'api_describe']) assert.match(tools, new RegExp(`name: '${name}'`))
+  assert.doesNotMatch(tools, /fetch\(|http:\/\//)
+})
+
 test('T03 package files include Registry runtime artifacts', () => {
   const expected = new Set([
     'lib/index.js',
@@ -81,6 +91,8 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/configuration.js',
     'lib/operation-validation.js',
     'lib/session-selection.js',
+    'lib/discovery.js',
+    'lib/agent-tools.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

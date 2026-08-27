@@ -16,7 +16,7 @@ This release includes the **T05 manual Operation and minimal API Kit management 
 - HTTP/HTTPS and host allowlist validation, production Agent opt-in, auth field validation, and referenced-delete protection;
 - optional OpenAPI import archive modes: no archive by default, or an explicit sanitized/raw archive.
 
-T06 session-scoped Kit and Environment selection is now implemented. `api_*` Agent tools, real HTTP requests, OpenAPI import, and complete Kit policy management remain deferred to T07–T12. The manual test entry waits for the future request executor. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
+T07 Agent discovery and description tools are now implemented: `api_kits`, `api_operations`, and `api_describe`. Real HTTP requests, `api_call`, OpenAPI import, and complete Kit policy management remain deferred to T08–T12. The manual test entry waits for the future request executor. Credentials are resolved only through a Host-only adapter and are never saved in the Registry.
 
 ### Session-scoped Kit selection
 
@@ -25,6 +25,15 @@ T06 session-scoped Kit and Environment selection is now implemented. `api_*` Age
 - Two Kits are the recommended maximum. More are allowed, but the selector displays a warning that the model-visible operation scope has expanded.
 - Host reads and future resolution revalidate Kit/Operation/Environment enabled state, Agent permissions, and environment compatibility on every access, so stale selections cannot remain usable.
 - The selector shows safe metadata and environment names only. It never shows base URLs, credential references, or secrets. Production environments are visibly marked and still follow the Host Agent switch.
+
+### T07 Agent discovery tools
+
+- The Host registers three fixed global tools: `api_kits`, `api_operations`, and `api_describe`; it does not create one dynamic tool per Operation.
+- Tools obtain the current session from `exec.agent.id` and revalidate activation before every call. The model cannot provide or forge a `sessionId`.
+- `api_kits` returns safe Kit/Environment summaries; `api_operations` supports keyword, Tag, HTTP method, Service Target, and pagination filters; `api_describe` accepts only a discovered stable `operationId`.
+- Only enabled, Agent-allowed Operations in active Kits that satisfy the Operation/Kit read or write policy intersection are discoverable or describable. Shared Operations are deterministically deduplicated.
+- Tool results are capped at 64 KiB. Operation pages stop at complete item boundaries and expose pagination metadata; oversized descriptions fail closed with `DESCRIPTION_TOO_LARGE`.
+- T07 only discovers and describes. It does not make HTTP requests, accept arbitrary URLs, or expose `baseUrl`, host allowlists, credential references, secrets, or internal stacks.
 
 The requirements baseline and incremental implementation plan are available here:
 

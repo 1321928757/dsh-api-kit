@@ -34,6 +34,8 @@
     "lib/configuration.js",
     "lib/operation-validation.js",
     "lib/session-selection.js",
+    "lib/discovery.js",
+    "lib/agent-tools.js",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",

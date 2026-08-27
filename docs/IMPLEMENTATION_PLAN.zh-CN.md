@@ -122,7 +122,7 @@ T02 + T08 + T09 → T15
 | T04 | 服务目标、环境和认证配置 | M0 | 已完成 | T02/T03 |
 | T05 | 手工 API 操作 CRUD | M0 | 已完成 | T02/T03/T04 |
 | T06 | 会话级 API 套件选择器 | M0 | 已完成 | T03/T04/T05 |
-| T07 | Agent 发现与描述工具 | M0 | 未开始 | T05/T06 |
+| T07 | Agent 发现与描述工具 | M0 | 已完成 | T05/T06 |
 | T08 | 固定目标的只读 HTTP 执行器 | M0 | 未开始 | T04/T05 |
 | T09 | 安全策略、SSRF、响应治理和审计 | M0 | 未开始 | T08 |
 | T10 | 动态上下文和 MVP 端到端验收 | M0 | 未开始 | T06/T07/T08/T09 |
@@ -198,9 +198,19 @@ git diff --check
 
 ### T07：Agent 发现与描述工具
 
-- 实现固定 `api_kits`、`api_operations`、`api_describe` 工具；
-- 只返回安全视图，输出受大小限制；
-- 不实现 HTTP 请求。
+**状态：已完成**
+
+**对应需求**：FR-TOOL-001～003、FR-TOOL-006、FR-SESSION-005、MVP 验收标准 3/4/5。
+
+- 新增 DSH 无关的 `lib/discovery.js`：每次调用从 `exec.agent.id` 获取 session，复用 `resolveSessionActivation` 权威校验；按激活 Kit、Operation、Service Target、Environment 和只读/写策略交集计算可发现范围。
+- 新增 `lib/agent-tools.js`：Host 注册三个固定 raw ToolDefinition：`api_kits`、`api_operations`、`api_describe`；不为每个 Operation 动态生成工具，也不接受模型传入 `sessionId` 或 URL。
+- `api_kits` 只返回 Kit/Environment 安全摘要；`api_operations` 支持关键词、Tag、method、Service Target、offset/limit、稳定分页和共享 Operation 去重；`api_describe` 只描述当前会话可见的稳定 `operationId`。
+- 结果限制为最多 64 KiB；分页按完整 Operation 条目截断，超大详情 fail-closed 为 `DESCRIPTION_TOO_LARGE`；错误使用不含堆栈和凭据的可行动 JSON envelope。
+- Host 改为注入 `tools` 并将三个工具注册到当前 Fiber，停止/更新/删除时随 Fiber 清理；未新增 DSH runtime 依赖。
+
+**设计边界**：T07 只实现发现和描述，不发起 HTTP，不实现 `api_call`、SSRF/DNS、响应治理、审计、动态上下文和 OpenAPI 导入；这些留给 T08～T12。
+
+**测试与验收**：新增 `test/discovery.test.mjs`，覆盖会话门禁、安全视图、策略过滤、Tag/method/target 筛选、分页去重、描述 Schema、失效重校验、参数校验和大输出 fail-closed；全量 `pnpm test`、`pnpm run check` 和入口语法检查通过。
 
 ### T08/T09：只读执行与安全边界
 
@@ -254,6 +264,18 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **测试命令与结果**：`node --check lib\\*.js`（入口语法通过）；`node test\\session-selection.test.mjs` 6/6 通过；`pnpm test` 55/55 通过；`pnpm run check` 通过；`git diff --check` 通过。
 - **未完成/风险**：不实现 Agent Tools、HTTP/OpenAPI、SSRF/DNS、动态上下文和审计；选择状态为进程内存态，重启后需重新激活；隔离 Profile 的 T06 新包运行时烟测待完成。
 - **下一步建议**：进入 T07，实现固定 `api_kits`、`api_operations`、`api_describe` Agent Tools，并在每次工具调用前复用 `resolveSessionActivation`。
+
+---
+
+### 2026-08-27 / T07
+
+- **完成内容**：完成固定 Agent 发现与描述工具；`api_kits` 提供安全 Kit/Environment 摘要，`api_operations` 支持关键词、Tag、HTTP method、Service Target 和分页，`api_describe` 根据稳定 `operationId` 返回当前会话可用的完整安全调用说明。
+- **变更文件**：新增 `lib/discovery.js`、`lib/agent-tools.js`、`test/discovery.test.mjs`；修改 `lib/index.js`、`package.json`、`scripts/check-manifest.mjs`、`test/manifest.test.mjs`、`README.md`、`README.zh-CN.md`、`CHANGELOG.md` 和本文件。
+- **运行时依据**：通过 Inspect 确认 `tools.register(definition)`、raw ToolDefinition 的参数/输出 Schema、`exec.agent.id` 会话身份和 Fiber 生命周期；参考当前运行时已安装并运行的 `dsh-mysql` 工具实现。
+- **安全边界**：每次调用重新解析会话激活状态；只暴露启用且允许 Agent 的 Operation，并应用 Kit/Operation 策略交集；输出不含 base URL、host 白名单、凭据引用、secret 或内部堆栈；T07 不发 HTTP。
+- **测试命令与结果**：`node --check` T07 入口通过；`node --test test/discovery.test.mjs` 8/8 通过；全量 `pnpm test`、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 待最终验收后记录。
+- **未完成/风险**：T07 不实现 `api_call`、HTTP transport、SSRF/DNS、响应治理、审计、动态上下文和 OpenAPI 导入；64 KiB 输出上限是发现工具边界，真实响应限制留给 T08/T09。
+- **下一步建议**：进入 T08，实现固定 `operationId + 参数` 的 Host 只读 HTTP 执行器，并继续复用当前会话权威解析和策略门禁。
 
 ---
 

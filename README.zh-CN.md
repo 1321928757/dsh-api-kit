@@ -16,7 +16,7 @@
 - HTTP/HTTPS、Host 白名单、生产环境 Agent 默认关闭、认证字段校验和删除引用保护；
 - 可选的 OpenAPI 导入存档策略：默认不保存，也可显式选择脱敏或原文存档。
 
-当前版本已完成 T06 会话级 API Kit/Environment 选择。`api_*` Agent 工具、真实 HTTP 请求、OpenAPI 导入和完整套件高级策略仍未实现，继续留给 T07–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
+当前版本已完成 T07 Agent 发现与描述工具：`api_kits`、`api_operations`、`api_describe`。真实 HTTP 请求、`api_call`、OpenAPI 导入和完整套件高级策略仍未实现，继续留给 T08–T12。人工测试入口也会在请求执行器完成后接入。凭据只允许通过 Host-only 适配器按次解析，Registry 不保存真实 secret。
 
 ### 会话级套件选择
 
@@ -25,6 +25,15 @@
 - 默认建议最多激活 2 个 Kit；超过后仍允许保存，但会显示模型可见操作范围扩大的警告。
 - Host 每次读取和后续解析都会重新校验 Kit/Operation/Environment 的启用状态、Agent 权限和环境兼容性；停用或删除后的旧选择不会继续生效。
 - 选择器只展示安全元数据和环境名称，不展示 base URL、凭据引用或 secret。生产环境会显示风险标识，并遵循 Host 的 Agent 开关。
+
+### T07 Agent 发现工具
+
+- Host 全局注册三个固定工具：`api_kits`、`api_operations`、`api_describe`，不为每个 Operation 动态生成工具。
+- 工具从 `exec.agent.id` 获取当前会话，并在每次调用前重新校验会话激活状态；模型不能传入或伪造 `sessionId`。
+- `api_kits` 返回当前会话的 Kit/Environment 安全摘要；`api_operations` 支持关键词、Tag、HTTP method、Service Target 和分页；`api_describe` 只接受已发现的稳定 `operationId`。
+- 只有激活 Kit 中启用、允许 Agent 且满足 Operation/Kit 只读或写策略交集的 Operation 才会被发现或描述；共享 Operation 会确定性去重。
+- 工具结果限制为最多 64 KiB；搜索结果按完整条目截断并返回分页信息，过大的详情 fail-closed 为 `DESCRIPTION_TOO_LARGE`。
+- T07 只负责发现和描述，不发起 HTTP，不接受任意 URL，不暴露 `baseUrl`、host 白名单、认证引用、secret 或内部堆栈。
 
 后续开发任务和需求基线见：
 
