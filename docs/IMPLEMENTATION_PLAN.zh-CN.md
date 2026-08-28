@@ -4,8 +4,8 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T11 OpenAPI JSON 导入器已完成，准备进入 T12
-- **最后更新**：2026-08-28
+- **当前阶段**：T12 OpenAPI 导入确认事务、冲突、Tag 与多服务绑定已完成，准备进入 T13
+- **最后更新**：2026-08-29
 
 ---
 
@@ -127,7 +127,7 @@ T02 + T08 + T09 → T15
 | T09 | 安全策略、SSRF、响应治理和审计 | M0 | 已完成 | T08 |
 | T10 | 动态上下文和 MVP 端到端验收 | M0 | 已完成 | T06/T07/T08/T09 |
 | T11 | OpenAPI JSON 导入器 | M1 | 已完成 | T02/T03/T05 |
-| T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 未开始 | T11 |
+| T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 已完成 | T11 |
 | T13 | UI 质量、主题、可用性和回归 | M1 | 未开始 | T10/T12 |
 | T14 | 写接口、人工确认和 OAuth | M2 | 未开始 | T09/T13 |
 | T15 | 独立 MCP Server 适配器 | M3 | 未开始 | T02/T08/T09 |
@@ -324,6 +324,22 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **验收命令与结果**：T10 定向测试 `8/8` 通过；全量 `pnpm test` `108/108` 通过；T10 相关语法检查、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 均通过。使用临时 `DSH_HOME` 安装本地 tgz，并以 `dsh --profile web --no-open --port 0` 成功启动隔离 Profile，实际输出 `http://127.0.0.1:61749`；未触碰当前 `http://127.0.0.1:3080`，未执行浏览器交互或模型调用，因此不宣称 UI/模型步验收已完成。
 - **设计边界**：T10 不导入 OpenAPI，不增加写请求/人工确认/OAuth2/SSE/WebSocket/自动重定向/隐式重试/独立 MCP Server；不改变 T09 的固定 IP transport、SSRF、响应治理和审计策略。
 - **下一步建议**：进入 T11，先实现 OpenAPI JSON 导入预览，并复用现有 Registry、Operation 校验和动态上下文安全视图。
+
+---
+
+### 2026-08-29 / T12
+
+- **状态：已完成**。新增 DSH 无关 `lib/openapi-import-transaction.js`，将 T11 预览接入显式的“预览→绑定→冲突决策→二次确认→原子提交”流程。
+- **预览与确认**：`previewOpenApiImport` 读取当前 Registry 快照并返回有界 transactionId、文档 fingerprint、Registry fingerprint、Tag/服务统计和待绑定状态；`confirmOpenApiImport` 必须携带原始 JSON、预览指纹和选择，Host 会重新解析文档、重算候选及冲突，不信任 Client 回传的 operation/status/counts/importable/sourceKey 内容。
+- **事务与并发**：确认在单次 `store.update` 队列中完成，重新校验 Registry fingerprint、文档 fingerprint、Target/Environment/Auth Profile/Kit 引用、Operation/Kit 校验和容量；失败不产生部分 Registry。支持 `dryRun`、stale preview 拒绝和同 transactionId/同选择幂等返回。归档仍是 Registry 成功后的独立 best-effort 操作。
+- **冲突与分配**：支持 `overwrite`、`keep-local`、`skip`；Tag 选择大小写不敏感，支持未标记操作；支持默认或逐 Operation 的已有 Service Target、Environment、Auth Profile、Kit 绑定，Kit 的 `operationIds` 作为关系事实源，随后执行 link reconciliation。Security OR/AND 无法无损映射时 fail-closed。
+- **安全边界**：只接收内存 JSON，不读文件、不联网、不注册 webServer 路由；Server URL 始终 display-only，不自动创建 Environment；不导入 secretRef/secret，不默认启用写操作，不信任客户端伪造的绑定键或候选状态。
+- **Host/RPC/UI**：扩展 Configuration/Gateway、Typert Host manifest、Client remote descriptors 和已 Inspect 确认的 `settings.section`；设置页提供有界 JSON 粘贴、预览统计、Tag/Target/Environment/Auth/Kit 绑定、冲突下拉选择、二次确认和结果反馈。
+- **运行时依据**：通过当前 Host Inspect 确认 `typert.register`、`typertGateway.invoke` 目录以及 Client `settings.section`/`conversation.input.left` Slot 契约；本任务仅复用已存在 Typert remote 与 settings.section，不新增未经确认的 HTTP 或 Slot。
+- **测试与清单**：新增 `test/openapi-import-transaction.test.mjs`，覆盖原子新增、Tag 筛选、冲突保留、本地 dry-run/stale、重复确认幂等、安全组合拒绝、失败不变和输入不可变；更新 package files、manifest 检查、Host/Client/Typert 合同测试。
+- **验收命令与结果**：T12 定向事务/Host/manifest 测试 `18/18` 通过；全量 `pnpm test` `126/126` 通过；`node --check`、`pnpm run check`、`pnpm pack --dry-run`、`git diff --check` 通过。当前 3080 GUI 未重启、未替换、未刷新；未宣称真实浏览器 UI 或模型调用验收。
+- **剩余限制**：当前 T12 只允许绑定已登记 Target/Environment/Auth Profile/Kit，不自动创建配置实体；多 Server 复杂路由需要逐 Operation 显式绑定；仍不支持 YAML、URL/Git、远程 `$ref`、OAuth2、文件上传、SSE/WebSocket、写操作确认和独立 MCP Server。
+- **下一步建议**：进入 T13，集中处理设置页交互质量、主题、窄屏/键盘可用性、错误状态和真实隔离 Profile 回归。
 
 ---
 

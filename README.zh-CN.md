@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前版本已完成 T11：在 T10 动态运行时上下文和 T09 固定目标只读调用的基础上，加入 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 的有界解析、规范化和预览计划。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
+当前版本已完成 T12：在 T11 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 有界解析、规范化和预览计划基础上，加入预览→绑定→冲突决策→确认的原子导入事务、Tag 筛选和设置页入口。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
 
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
 - `api_call` 只接受稳定 `operationId` 与已声明参数，当前只执行 GET/HEAD。
@@ -36,7 +36,15 @@
 
 每次模型步骤组装提示词时，Host Provider 都会使用 Agent 的权威 session ID 重新读取当前会话激活和 Registry 状态，注入简短摘要：激活套件名称/描述、所选环境、可发现/只读/写操作数量、固定工具名、发现到调用流程，以及只读、SSRF、响应治理和审计边界。上下文不会包含 base URL、具体 host/CIDR、凭据引用或凭据值、请求 Header/Cookie，也不会包含完整 OpenAPI Schema。停用或清除 Kit/Environment 后，下一次组装会立即反映，DSH Runtime Projection 会替换或清除旧快照。
 
-## OpenAPI JSON 导入预览
+## OpenAPI JSON 导入与确认
+
+T12 在设置页提供“导入 OpenAPI JSON”流程：粘贴 JSON → 读取并预览 → 选择 Tag、已登记 Service Target、Environment、Auth Profile 和一个或多个 Kit → 逐项处理冲突 → 二次确认并原子写入 Registry。Host 在确认时会重新解析文档和当前 Registry，不信任浏览器提交的候选字段；任何校验、并发或持久化失败都会使整个批次不写入。
+
+- `previewOpenApiImport(args)` 返回有界预览、文档 fingerprint、Registry fingerprint、Tag/服务统计和 transactionId；不保存完整原文。
+- `confirmOpenApiImport(args)` 必须携带原始 JSON、transactionId、预览指纹和明确绑定；只允许使用现有 Target/Environment/Auth Profile/Kit。重复成功确认使用相同 transactionId 和选择时幂等返回。
+- Tag 筛选只影响本次 sourceKey 选择；冲突支持 `overwrite`、`keep-local`、`skip`。写操作保持不可由 Agent 调用的安全默认策略。
+- Server URL 仍为 display-only，不能自动创建 Environment；导入归档默认关闭，归档失败不影响 Registry 提交结果。
+
 
 T11 提供 DSH 无关的 `buildOpenApiImportPreview(input, options)`（同时导出 `previewOpenApiImport`），支持 OpenAPI 3.0/3.1 和 Swagger 2.0 JSON 字符串或对象。解析器只解析文档内的 JSON Pointer `$ref`，有界转换路径、参数、请求体、响应、Server 候选和认证模板，并生成稳定的 Operation 来源键及 new/update/conflict/skip 预览分类。
 

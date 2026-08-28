@@ -27,4 +27,12 @@
 - Added the DSH-independent bounded OpenAPI JSON importer and preview builder for OpenAPI 3.0/3.1 and Swagger 2.0.
 - Added local JSON Pointer `$ref` resolution with cycle/depth/count bounds, stable operation provenance, parameter/body/response normalization, server candidates, security templates, and actionable warnings/errors.
 - Added deterministic new/update/conflict/skip preview classification without Registry mutation, network access, file access, or secret import; added importer tests and JSON fixtures.
-- T11 intentionally defers confirmation transactions, Tag filtering, multi-service/Kit/Environment/Auth assignment, YAML/URL/Git import, remote refs, OAuth2, uploads, and write-operation confirmation to T12 or later.
+- T11 intentionally deferred confirmation transactions, Tag filtering, multi-service/Kit/Environment/Auth assignment, YAML/URL/Git import, remote refs, OAuth2, uploads, and write-operation confirmation to T12 or later.
+
+## Unreleased / T12
+
+- Added `lib/openapi-import-transaction.js` with a DSH-independent preview/confirmation service. Confirmation re-parses the original bounded JSON, revalidates the current Registry and commits all selected Operations and Kit links through one serialized `store.update` transaction.
+- Added bounded transaction IDs, document/Registry fingerprints, stale-preview rejection, dry-run mode, same-transaction idempotent replay, Tag/untagged selection, explicit `overwrite`/`keep-local`/`skip` conflict decisions, existing Target/Environment/Auth Profile/Kit bindings, and fail-closed security mapping.
+- Added Host configuration/Gateway and Typert/Client descriptors for `previewOpenApiImport` and `confirmOpenApiImport`, plus a settings-page JSON paste/preview/bind/confirm workflow with explicit second confirmation.
+- Server URLs remain display-only; the transaction does not create environments, import secrets, access the network, or enable write Operations for Agent execution. Archive persistence remains separate and best-effort after a successful Registry commit.
+- Added T12 transaction tests, manifest checks, and package inclusion for the transaction module.

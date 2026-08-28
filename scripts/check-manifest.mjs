@@ -34,6 +34,7 @@ const expectedFiles = [
   'lib/audit-log.js',
   'lib/runtime-context.js',
   'lib/openapi-import.js',
+  'lib/openapi-import-transaction.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -81,6 +82,10 @@ if (!/createApiKitAgentTools/.test(host) || !/tools\.register/.test(host) || !/c
 if (!/runtime-context\.js/.test(host) || !/systemPrompt/.test(host) || !/registerApiKitRuntimeContext/.test(await read('lib/runtime-context.js'))) fail('Host entry must register dynamic API Kit runtime context')
 const importer = await read('lib/openapi-import.js')
 if (!/buildOpenApiImportPreview/.test(importer) || !/openapi-3\.\$\{minor\}/.test(importer) || !/swagger-2\.0/.test(importer) || !/EXTERNAL_REF_UNSUPPORTED/.test(importer)) fail('T11 OpenAPI importer must expose bounded JSON preview support')
+const transaction = await read('lib/openapi-import-transaction.js')
+if (!/createOpenApiImportTransactionService/.test(transaction) || !/confirmOpenApiImport/.test(transaction) || !/store\.update/.test(transaction)) fail('T12 import transaction must revalidate and commit atomically')
+if (!/previewOpenApiImport/.test(host) || !/confirmOpenApiImport/.test(host) || !/previewOpenApiImport/.test(typert) || !/confirmOpenApiImport/.test(typert) || !/previewOpenApiImport/.test(client) || !/confirmOpenApiImport/.test(client) || !/data-t12-import/.test(client)) fail('T12 import RPC methods and settings UI must be synchronized')
+if (/fetch\(|webServer/.test(transaction)) fail('T12 import transaction must remain offline and not expose a web route')
 if (/\bfetch\s*\(/.test(importer)) fail('T11 importer must not perform network access')
 for (const wire of ['id', 'patch', 'enabled', 'input', 'kitId', 'operationIds']) {
   if (!new RegExp(`name: item, wire: item`).test(typert)) fail(`Typert manifest does not generate named wire mappings for ${wire}`)

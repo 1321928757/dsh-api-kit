@@ -4,7 +4,7 @@
 
 ## Status
 
-T11 is complete on top of the T10 dynamic runtime context and T09 fixed-target read-only executor. The bundle now provides bounded, DSH-independent OpenAPI 3.0/3.1 and Swagger 2.0 JSON parsing, normalization, local-reference resolution, and preview plans. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
+T12 is complete on top of the T11 bounded OpenAPI 3.0/3.1 and Swagger 2.0 JSON importer. The bundle now provides preview → binding → conflict decision → confirmation with an atomic Registry import transaction, Tag selection, and a settings-page entry. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
 
 - Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
 - `api_call` accepts only a stable `operationId` and declared parameters, and currently executes GET/HEAD only.
@@ -36,7 +36,15 @@ Recommended flow: `api_kits → api_operations → api_describe → api_call`. T
 
 For every model-step prompt assembly, the Host provider re-reads the current session activation and Registry state using the Agent's authoritative session ID. It contributes a short summary containing active Kit names/descriptions, the selected Environment, discoverable/read-only/write counts, fixed tool names, the discovery-to-call workflow, and the read-only/SSRF/response/audit boundaries. It never includes base URLs, concrete hosts or CIDRs, credential references or values, request headers/cookies, or full OpenAPI schemas. Disabling or clearing a Kit or Environment is reflected on the next assembly; the DSH runtime projection replaces or clears the previous snapshot.
 
-## OpenAPI JSON import preview
+## OpenAPI JSON import and confirmation
+
+T12 adds a settings workflow: paste JSON → preview → choose Tags, registered Service Target, Environment, Auth Profile and one or more Kits → decide conflicts → explicit confirmation and one atomic Registry write. The Host re-parses the document and current Registry at confirmation and never trusts browser-supplied candidate fields; validation, concurrency, or persistence failure leaves the whole batch uncommitted.
+
+- `previewOpenApiImport(args)` returns bounded preview data, document and Registry fingerprints, Tag/service counts, and a transactionId; it never stores the full source document.
+- `confirmOpenApiImport(args)` requires the original JSON, transactionId, preview fingerprints, and explicit bindings. Only existing Targets/Environments/Auth Profiles/Kits are accepted. Repeating a successful confirmation with the same transactionId and selection is idempotent.
+- Tag selection applies only to the current source-key selection. Conflicts support `overwrite`, `keep-local`, and `skip`. Write operations retain the non-Agent-callable safe default.
+- Server URLs remain display-only and never create Environments. Import archiving is disabled by default; an archive failure does not roll back or invalidate the Registry commit.
+
 
 T11 exposes the DSH-independent `buildOpenApiImportPreview(input, options)` function (also exported as `previewOpenApiImport`) for OpenAPI 3.0/3.1 and Swagger 2.0 JSON strings or objects. It performs bounded normalization of paths, parameters, request bodies, responses, server candidates, and authentication templates, resolves only local JSON Pointer `$ref` values, and produces stable Operation provenance plus new/update/conflict/skip classifications.
 
