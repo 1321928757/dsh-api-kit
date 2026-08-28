@@ -1,0 +1,18 @@
+{
+  "swagger": "2.0",
+  "info": { "title": "Legacy API", "version": "2.0" },
+  "schemes": ["https"],
+  "host": "legacy.example.test",
+  "basePath": "/api",
+  "definitions": { "User": { "type": "object", "properties": { "id": { "type": "integer" } } } },
+  "securityDefinitions": { "api_key": { "type": "apiKey", "name": "X-API-Key", "in": "header" } },
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "listUsers",
+        "security": [{ "api_key": [] }],
+        "responses": { "200": { "description": "OK", "schema": { "$ref": "#/definitions/User" } } }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Referenced API", "version": "1.0.0" },
+  "servers": [{ "$ref": "#/components/servers/main" }],
+  "components": {
+    "servers": { "main": { "url": "https://api.example.test" } },
+    "schemas": { "User": { "type": "object", "properties": { "id": { "type": "integer" } } } },
+    "parameters": { "UserId": { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } },
+    "responses": { "UserResponse": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } } },
+    "securitySchemes": { "bearer": { "type": "http", "scheme": "bearer" } }
+  },
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "operationId": "getUser",
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "responses": { "200": { "$ref": "#/components/responses/UserResponse" } }
+      }
+    }
+  }
+}

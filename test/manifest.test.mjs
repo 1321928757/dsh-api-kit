@@ -76,6 +76,15 @@ test('T07 registers fixed Agent discovery tools without HTTP execution', async (
   assert.doesNotMatch(tools, /fetch\(|http:\/\//)
 })
 
+test('T11 ships a bounded DSH-independent OpenAPI JSON importer', async () => {
+  const importer = await read('lib/openapi-import.js')
+  assert.match(importer, /buildOpenApiImportPreview/)
+  assert.match(importer, /openapi-3\.\$\{minor\}/)
+  assert.match(importer, /swagger-2\.0/)
+  assert.match(importer, /EXTERNAL_REF_UNSUPPORTED/)
+  assert.doesNotMatch(importer, /\bfetch\s*\(/)
+})
+
 test('T10 registers a per-assembly dynamic runtime context', async () => {
   const host = await read('lib/index.js')
   const context = await read('lib/runtime-context.js')
@@ -123,6 +132,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/redaction.js',
     'lib/audit-log.js',
     'lib/runtime-context.js',
+    'lib/openapi-import.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

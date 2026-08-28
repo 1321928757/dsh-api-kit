@@ -1,0 +1,10 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Invalid API", "version": "1.0.0" },
+  "servers": [{ "url": "ftp://invalid.example.test" }],
+  "paths": {
+    "https://invalid.example.test/users": {
+      "trace": { "operationId": "traceUsers", "responses": { "200": { "description": "OK" } } }
+    }
+  }
+}

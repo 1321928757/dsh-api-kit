@@ -4,7 +4,7 @@
 
 ## Status
 
-T10 is complete on top of the T09 fixed-target read-only executor. The bundle now provides per-assembly, session-scoped dynamic runtime context in addition to execution-time DNS/IP/CIDR SSRF checks, pinned-IP connections, redirect denial, recursive JSON redaction, and Host-only local JSONL auditing. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
+T11 is complete on top of the T10 dynamic runtime context and T09 fixed-target read-only executor. The bundle now provides bounded, DSH-independent OpenAPI 3.0/3.1 and Swagger 2.0 JSON parsing, normalization, local-reference resolution, and preview plans. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
 
 - Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
 - `api_call` accepts only a stable `operationId` and declared parameters, and currently executes GET/HEAD only.
@@ -35,6 +35,15 @@ Recommended flow: `api_kits → api_operations → api_describe → api_call`. T
 ## Dynamic runtime context
 
 For every model-step prompt assembly, the Host provider re-reads the current session activation and Registry state using the Agent's authoritative session ID. It contributes a short summary containing active Kit names/descriptions, the selected Environment, discoverable/read-only/write counts, fixed tool names, the discovery-to-call workflow, and the read-only/SSRF/response/audit boundaries. It never includes base URLs, concrete hosts or CIDRs, credential references or values, request headers/cookies, or full OpenAPI schemas. Disabling or clearing a Kit or Environment is reflected on the next assembly; the DSH runtime projection replaces or clears the previous snapshot.
+
+## OpenAPI JSON import preview
+
+T11 exposes the DSH-independent `buildOpenApiImportPreview(input, options)` function (also exported as `previewOpenApiImport`) for OpenAPI 3.0/3.1 and Swagger 2.0 JSON strings or objects. It performs bounded normalization of paths, parameters, request bodies, responses, server candidates, and authentication templates, resolves only local JSON Pointer `$ref` values, and produces stable Operation provenance plus new/update/conflict/skip classifications.
+
+- `serverCandidates` are display-only confirmation candidates. They never create or trust an Environment; Swagger `host/basePath/schemes` are not direct call targets either.
+- Authentication templates contain only non-sensitive metadata for Bearer, Basic, and Header/Query API Keys. Secrets are never imported, and Query API Keys remain disabled by default. OAuth2, OpenID Connect, mTLS, remote `$ref`, YAML, and URL/Git import are outside T11.
+- Preview accepts only in-memory JSON, performs no file or network access, and does not mutate the Registry or the input object. Candidates without registered Service Target/Auth Profile bindings carry `needsBinding` for the T12 confirmation transaction.
+- Invalid versions, paths, external/cyclic/missing refs, controlled headers, invalid response statuses, and uploads produce structured diagnostics instead of silently creating callable definitions. Write operations remain disabled for Agent execution by default.
 
 ## Installation
 

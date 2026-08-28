@@ -43,6 +43,7 @@
     "lib/redaction.js",
     "lib/audit-log.js",
     "lib/runtime-context.js",
+    "lib/openapi-import.js",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",

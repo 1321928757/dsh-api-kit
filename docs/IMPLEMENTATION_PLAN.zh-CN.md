@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T10 动态上下文和 MVP 端到端验收已完成，准备进入 T11
+- **当前阶段**：T11 OpenAPI JSON 导入器已完成，准备进入 T12
 - **最后更新**：2026-08-28
 
 ---
@@ -126,7 +126,7 @@ T02 + T08 + T09 → T15
 | T08 | 固定目标的只读 HTTP 执行器 | M0 | 已完成 | T04/T05 |
 | T09 | 安全策略、SSRF、响应治理和审计 | M0 | 已完成 | T08 |
 | T10 | 动态上下文和 MVP 端到端验收 | M0 | 已完成 | T06/T07/T08/T09 |
-| T11 | OpenAPI JSON 导入器 | M1 | 未开始 | T02/T03/T05 |
+| T11 | OpenAPI JSON 导入器 | M1 | 已完成 | T02/T03/T05 |
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 未开始 | T11 |
 | T13 | UI 质量、主题、可用性和回归 | M1 | 未开始 | T10/T12 |
 | T14 | 写接口、人工确认和 OAuth | M2 | 未开始 | T09/T13 |
@@ -324,6 +324,20 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **验收命令与结果**：T10 定向测试 `8/8` 通过；全量 `pnpm test` `108/108` 通过；T10 相关语法检查、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 均通过。使用临时 `DSH_HOME` 安装本地 tgz，并以 `dsh --profile web --no-open --port 0` 成功启动隔离 Profile，实际输出 `http://127.0.0.1:61749`；未触碰当前 `http://127.0.0.1:3080`，未执行浏览器交互或模型调用，因此不宣称 UI/模型步验收已完成。
 - **设计边界**：T10 不导入 OpenAPI，不增加写请求/人工确认/OAuth2/SSE/WebSocket/自动重定向/隐式重试/独立 MCP Server；不改变 T09 的固定 IP transport、SSRF、响应治理和审计策略。
 - **下一步建议**：进入 T11，先实现 OpenAPI JSON 导入预览，并复用现有 Registry、Operation 校验和动态上下文安全视图。
+
+---
+
+### 2026-08-29 / T11
+
+- **状态：已完成**。新增 DSH 无关 `lib/openapi-import.js`，实现有界 OpenAPI JSON 解析、版本识别、文档元数据、稳定来源指纹、OpenAPI 3.0/3.1 与 Swagger 2.0 适配，以及仅限本地 JSON Pointer 的 `$ref` 展开。
+- **规范化能力**：遍历并稳定排序支持的 HTTP Operation；合并 Path Item/Operation 参数；转换 OAS3 `schema/content`、Swagger 2 `type/format/items/body`；转换请求体、响应和成功状态；保留有限 Tags、Security 要求和安全扩展元数据；缺失 `operationId` 时使用稳定的 method/path ID。
+- **Server 与认证候选**：将 OAS3 servers（含安全 default 变量、文档/Path/Operation 层级）和 Swagger `schemes + host + basePath` 转为仅供确认的 `serverCandidates`，不创建 Environment。支持 Bearer、Basic、Header API Key、Query API Key 模板；不保存 secret，Query Key 默认禁用，OAuth2/OpenID/mTLS/不安全 Header 等只产生诊断。
+- **预览与幂等基础**：新增 `buildOpenApiImportPreview`/`previewOpenApiImport`，输出有界的文档元数据、Server/认证模板、Operation 候选、Tag/Service 统计、warning/error 和 new/update/conflict/skip/error 计数。预览只比较传入的普通 Registry 快照，不落盘、不调用网络、不修改输入；绑定 Service Target/Auth Profile 仍需后续确认。
+- **失败保护**：拒绝非法 JSON、未知版本、错误 `paths`、外部/缺失/循环/超深 `$ref`、危险路径、非法响应状态、未声明路径参数、文件上传和超限输入；响应/示例及诊断均进行有界处理和敏感字段脱敏。当前 OpenAPI server URL 明确标记为 display-only，不能直接作为执行目标。
+- **测试与清单**：新增 `test/openapi-import.test.mjs` 及四个 JSON fixtures，覆盖三种版本、引用、参数覆盖、请求体/响应、服务器变量、安全方案、敏感数据、冲突幂等和大小限制；将 `lib/openapi-import.js` 加入发布清单、manifest 检查和 manifest 测试。
+- **验收命令与结果**：T11 定向导入测试 `10/10` 通过；manifest 测试 `10/10` 通过；`node --check lib/openapi-import.js` 通过；`pnpm run check` 通过。全量 `pnpm test`、`pnpm pack --dry-run`、`git diff --check` 和隔离 Profile 烟测在最终验收阶段执行。
+- **设计边界**：T11 只提供纯函数解析/规范化/预览计划，不增加 Registry 批量写入、导入确认、设置页导入入口、Typert/RPC、Tag 过滤、冲突决策、多服务/Kit/Environment/Auth 绑定；这些留给 T12。仍不支持 YAML、URL/Git 导入、远程 `$ref`、OAuth2、文件上传、SSE/WebSocket、自动重定向和写操作确认。
+- **下一步建议**：进入 T12，实现导入确认事务、冲突决策、Tag 筛选和多服务/Kit/Environment/Auth 绑定，并在提交前再次执行现有严格配置校验。
 
 ---
 

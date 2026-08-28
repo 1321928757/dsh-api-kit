@@ -21,3 +21,10 @@
 - Added `lib/runtime-context.js` and Host `systemPrompt.context` registration for authoritative per-session, per-assembly API Kit summaries.
 - Added runtime-context, registration, and MVP discovery-to-call tests. The context exposes Kit/environment metadata, discoverable operation counts, fixed tool workflow, and security limits without URLs, hosts, CIDRs, credential references/values, headers, cookies, or full schemas.
 - T10 keeps GET/HEAD-only execution and defers OpenAPI import, write operations, OAuth, SSE/WebSocket, automatic redirects, and independent MCP export.
+
+## Unreleased / T11
+
+- Added the DSH-independent bounded OpenAPI JSON importer and preview builder for OpenAPI 3.0/3.1 and Swagger 2.0.
+- Added local JSON Pointer `$ref` resolution with cycle/depth/count bounds, stable operation provenance, parameter/body/response normalization, server candidates, security templates, and actionable warnings/errors.
+- Added deterministic new/update/conflict/skip preview classification without Registry mutation, network access, file access, or secret import; added importer tests and JSON fixtures.
+- T11 intentionally defers confirmation transactions, Tag filtering, multi-service/Kit/Environment/Auth assignment, YAML/URL/Git import, remote refs, OAuth2, uploads, and write-operation confirmation to T12 or later.

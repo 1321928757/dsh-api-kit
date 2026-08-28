@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前版本已完成 T10：在 T09 固定目标只读调用的基础上加入按会话、按每轮组装刷新的动态运行时上下文，以及执行期 DNS/IP/CIDR SSRF 防护、固定 IP 连接、重定向拒绝、递归 JSON 脱敏和 Host-only 本地审计。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
+当前版本已完成 T11：在 T10 动态运行时上下文和 T09 固定目标只读调用的基础上，加入 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 的有界解析、规范化和预览计划。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
 
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
 - `api_call` 只接受稳定 `operationId` 与已声明参数，当前只执行 GET/HEAD。
@@ -35,6 +35,15 @@
 ## 动态运行时上下文
 
 每次模型步骤组装提示词时，Host Provider 都会使用 Agent 的权威 session ID 重新读取当前会话激活和 Registry 状态，注入简短摘要：激活套件名称/描述、所选环境、可发现/只读/写操作数量、固定工具名、发现到调用流程，以及只读、SSRF、响应治理和审计边界。上下文不会包含 base URL、具体 host/CIDR、凭据引用或凭据值、请求 Header/Cookie，也不会包含完整 OpenAPI Schema。停用或清除 Kit/Environment 后，下一次组装会立即反映，DSH Runtime Projection 会替换或清除旧快照。
+
+## OpenAPI JSON 导入预览
+
+T11 提供 DSH 无关的 `buildOpenApiImportPreview(input, options)`（同时导出 `previewOpenApiImport`），支持 OpenAPI 3.0/3.1 和 Swagger 2.0 JSON 字符串或对象。解析器只解析文档内的 JSON Pointer `$ref`，有界转换路径、参数、请求体、响应、Server 候选和认证模板，并生成稳定的 Operation 来源键及 new/update/conflict/skip 预览分类。
+
+- `serverCandidates` 仅是 display-only 的用户确认候选，不会自动创建或信任 Environment；Swagger `host/basePath/schemes` 同样不会直接成为调用目标。
+- 认证模板只包含 Bearer、Basic、Header/Query API Key 的非敏感元数据；不保存 secret，Query API Key 默认关闭。OAuth2、OpenID Connect、mTLS、远程 `$ref`、YAML、URL/Git 导入不在 T11 范围内。
+- 预览只接收内存中的 JSON，不读文件、不联网、不修改 Registry 或输入对象；候选未绑定已登记 Service Target/Auth Profile 时标记 `needsBinding`，需 T12 的确认事务处理。
+- 非法版本、坏路径、外部/循环/缺失引用、危险 Header、非法响应状态和文件上传会产生结构化诊断，不静默生成可调用定义；写操作仍保持默认不可由 Agent 执行。
 
 ## 安装（后续发布）
 
