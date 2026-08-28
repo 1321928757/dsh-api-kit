@@ -32,6 +32,7 @@ const expectedFiles = [
   'lib/ssrf.js',
   'lib/redaction.js',
   'lib/audit-log.js',
+  'lib/runtime-context.js',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -76,6 +77,7 @@ for (const tool of ['api_kits', 'api_operations', 'api_describe', 'api_call']) {
   if (!new RegExp(`name:\\s*['"]${tool}['"]`).test(await read('lib/agent-tools.js'))) fail(`Agent tool is missing ${tool}`)
 }
 if (!/createApiKitAgentTools/.test(host) || !/tools\.register/.test(host) || !/createApiKitHttpExecutor/.test(await read('lib/executor.js'))) fail('Host entry must register Agent API tools and executor')
+if (!/runtime-context\.js/.test(host) || !/systemPrompt/.test(host) || !/registerApiKitRuntimeContext/.test(await read('lib/runtime-context.js'))) fail('Host entry must register dynamic API Kit runtime context')
 for (const wire of ['id', 'patch', 'enabled', 'input', 'kitId', 'operationIds']) {
   if (!new RegExp(`name: item, wire: item`).test(typert)) fail(`Typert manifest does not generate named wire mappings for ${wire}`)
 }

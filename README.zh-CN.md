@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前版本已完成 T09：在 T08 固定目标只读调用的基础上加入执行期 DNS/IP/CIDR SSRF 防护、固定 IP 连接、重定向拒绝、递归 JSON 脱敏和 Host-only 本地审计。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
+当前版本已完成 T10：在 T09 固定目标只读调用的基础上加入按会话、按每轮组装刷新的动态运行时上下文，以及执行期 DNS/IP/CIDR SSRF 防护、固定 IP 连接、重定向拒绝、递归 JSON 脱敏和 Host-only 本地审计。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
 
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
 - `api_call` 只接受稳定 `operationId` 与已声明参数，当前只执行 GET/HEAD。
@@ -32,6 +32,10 @@
 
 推荐顺序：`api_kits → api_operations → api_describe → api_call`。模型不得猜测 URL、主机、认证值或绕过会话激活。
 
+## 动态运行时上下文
+
+每次模型步骤组装提示词时，Host Provider 都会使用 Agent 的权威 session ID 重新读取当前会话激活和 Registry 状态，注入简短摘要：激活套件名称/描述、所选环境、可发现/只读/写操作数量、固定工具名、发现到调用流程，以及只读、SSRF、响应治理和审计边界。上下文不会包含 base URL、具体 host/CIDR、凭据引用或凭据值、请求 Header/Cookie，也不会包含完整 OpenAPI Schema。停用或清除 Kit/Environment 后，下一次组装会立即反映，DSH Runtime Projection 会替换或清除旧快照。
+
 ## 安装（后续发布）
 
 ```powershell
@@ -50,7 +54,7 @@ pnpm pack --dry-run
 
 ## 安全边界
 
-T09 仍不实现 OpenAPI 导入、动态上下文、写操作、OAuth2、文件上传、SSE/WebSocket、自动重定向、隐式重试或独立 MCP Server。私网放行必须是明确 CIDR；本实现不接受任意 URL，也不把 T09 的固定目标调用当作通用互联网代理。
+T10 仍不实现 OpenAPI 导入、写操作、OAuth2、文件上传、SSE/WebSocket、自动重定向、隐式重试或独立 MCP Server。私网放行必须是明确 CIDR；本实现不接受任意 URL，也不把 T09 的固定目标调用当作通用互联网代理。
 
 ## 参考链接
 

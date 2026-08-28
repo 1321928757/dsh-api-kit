@@ -15,3 +15,9 @@
 - Added T08 fixed-target `api_call` execution for GET/HEAD Operations, including request-time Host authentication, declared parameter validation, host allowlist checks, cooperative cancellation, timeout and response-size limits, safe JSON/text projection, and injectable fake transport tests.
 - Added T09 execution-time DNS/IP/CIDR SSRF policy, IPv4/IPv6 and mapped-address classification, DNS rebinding-resistant pinned HTTP transport, redirect denial, recursive JSON response redaction, and Host-only append-only JSONL audit logging for calls and policy rejections.
 - T09 retains GET/HEAD-only execution and defers OpenAPI import, dynamic context, write operations, OAuth, SSE/WebSocket, automatic redirects, and independent MCP export.
+
+## Unreleased / T10
+
+- Added `lib/runtime-context.js` and Host `systemPrompt.context` registration for authoritative per-session, per-assembly API Kit summaries.
+- Added runtime-context, registration, and MVP discovery-to-call tests. The context exposes Kit/environment metadata, discoverable operation counts, fixed tool workflow, and security limits without URLs, hosts, CIDRs, credential references/values, headers, cookies, or full schemas.
+- T10 keeps GET/HEAD-only execution and defers OpenAPI import, write operations, OAuth, SSE/WebSocket, automatic redirects, and independent MCP export.

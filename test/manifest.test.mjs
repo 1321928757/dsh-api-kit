@@ -69,11 +69,22 @@ test('T05 Typert manifest exposes only safe configuration methods', async () => 
 test('T07 registers fixed Agent discovery tools without HTTP execution', async () => {
   const host = await read('lib/index.js')
   const tools = await read('lib/agent-tools.js')
-  assert.match(host, /export const inject = \['tools'\]/)
+  assert.match(host, /export const inject = \['tools', 'systemPrompt'\]/)
   assert.match(host, /createApiKitAgentTools/)
   assert.match(host, /ctx\.tools\.register/)
   for (const name of ['api_kits', 'api_operations', 'api_describe']) assert.match(tools, new RegExp(`name: '${name}'`))
   assert.doesNotMatch(tools, /fetch\(|http:\/\//)
+})
+
+test('T10 registers a per-assembly dynamic runtime context', async () => {
+  const host = await read('lib/index.js')
+  const context = await read('lib/runtime-context.js')
+  assert.match(host, /export const inject = \['tools', 'systemPrompt'\]/)
+  assert.match(host, /registerApiKitRuntimeContext/)
+  assert.match(context, /systemPrompt\.context/)
+  assert.match(host, /systemPrompt/)
+  assert.match(context, /api_operations/)
+  assert.match(context, /GET\/HEAD/)
 })
 
 test('T08 adds a fixed-target read-only api_call executor and transport', async () => {
@@ -111,6 +122,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/ssrf.js',
     'lib/redaction.js',
     'lib/audit-log.js',
+    'lib/runtime-context.js',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

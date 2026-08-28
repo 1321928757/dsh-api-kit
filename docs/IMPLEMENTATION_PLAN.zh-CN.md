@@ -4,8 +4,8 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T09 安全策略、SSRF、响应治理和审计已完成，准备进入 T10
-- **最后更新**：2026-08-27
+- **当前阶段**：T10 动态上下文和 MVP 端到端验收已完成，准备进入 T11
+- **最后更新**：2026-08-28
 
 ---
 
@@ -125,7 +125,7 @@ T02 + T08 + T09 → T15
 | T07 | Agent 发现与描述工具 | M0 | 已完成 | T05/T06 |
 | T08 | 固定目标的只读 HTTP 执行器 | M0 | 已完成 | T04/T05 |
 | T09 | 安全策略、SSRF、响应治理和审计 | M0 | 已完成 | T08 |
-| T10 | 动态上下文和 MVP 端到端验收 | M0 | 未开始 | T06/T07/T08/T09 |
+| T10 | 动态上下文和 MVP 端到端验收 | M0 | 已完成 | T06/T07/T08/T09 |
 | T11 | OpenAPI JSON 导入器 | M1 | 未开始 | T02/T03/T05 |
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 未开始 | T11 |
 | T13 | UI 质量、主题、可用性和回归 | M1 | 未开始 | T10/T12 |
@@ -225,6 +225,8 @@ git diff --check
 
 **T09 设计边界**：仍只执行 GET/HEAD，不实现 OpenAPI 导入、动态上下文、写操作、OAuth、SSE/WebSocket、自动重定向或独立 MCP Server。
 
+**T10 已在 2026-08-28 完成**，详见下方 T10 交接记录。
+
 ---
 
 ## 6. 技术约束与实现原则
@@ -306,8 +308,22 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **响应治理**：JSON 成功及错误体在输出前递归替换敏感字段，再按深度、数组、字符串、对象数量和总字节治理；不返回 Response Header 或 `Location`。
 - **审计**：Host-only JSONL sink 写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`，字段白名单、默认 14 日懒清理、串行 append；调用拒绝和网络尝试均走 executor finally，审计写失败不影响工具结果。
 - **测试与验收结果**：新增 SSRF 15 项、Redaction 4 项、Audit 3 项；全量 `pnpm test` 94/94 通过；`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 通过。
-- **未完成/风险**：仍不实现动态上下文、OpenAPI 导入、写操作、OAuth、SSE/WebSocket、自动重定向和独立 MCP Server；DNS/固定连接能力通过插件私有 seam 实现，未来若 DSH 提供官方能力可替换。
-- **下一步建议**：进入 T10，完成动态上下文和 MVP 端到端验收。
+- **未完成/风险**：仍不实现 OpenAPI 导入、写操作、OAuth、SSE/WebSocket、自动重定向和独立 MCP Server；DNS/固定连接能力通过插件私有 seam 实现，未来若 DSH 提供官方能力可替换。
+- **下一步建议**：T10 已完成，进入 T11，先实现 OpenAPI JSON 导入预览。
+
+---
+
+### 2026-08-28 / T10
+
+- **状态：已完成**。完成 Host `systemPrompt.context` 动态上下文注册，并完成 DSH 无关渲染、注册契约和 MVP 发现到调用链测试。
+- **运行时依据**：通过当前运行时源码和 Inspect 确认 `systemPrompt.context({ name, order, text })` 的 Fiber 作用域与 disposer 契约；`dsh-agent-loop` 每个 step 使用 `assembleContextFor(agent, signal)` 组装上下文，Provider 可从 `context.agent.id` 获取与 Session 相同的权威身份；`agent/session-start` 仅为一次性通知，本任务未将其误用为每轮刷新入口。
+- **动态上下文**：新增 `lib/runtime-context.js`，使用 `api-kit:session` / order `200` 注册同步 Provider。每次组装都重新读取当前 Session Activation、Operation 和 Service Target 安全视图，按 Kit/Operation/Target/Environment 策略交集计算可发现数量，并对共享 Operation 去重。上下文包含 Kit 名称/描述、Environment（含生产标识）、可发现/只读/写操作数量、四个固定工具名、`api_kits → api_operations → api_describe → api_call` 顺序、GET/HEAD 只读边界、Host 固定目标、DNS/IP/CIDR SSRF、响应治理、脱敏和审计规则。
+- **安全边界**：动态上下文只输出有界、去控制字符的模型指导和安全摘要；不输出 `baseUrl`、具体 host/CIDR、`secretRef`、认证值、Authorization/Cookie/受控 Header、完整 OpenAPI 文档或 Schema。无 Agent、无激活或失效激活时返回空字符串，让 DSH RuntimeContextProjection 清除过期快照；Provider 异常 fail-closed，不影响工具错误 envelope。
+- **MVP 端到端测试**：新增 `test/mvp-e2e.test.mjs`，以三个手工 GET Operation 驱动 `api_kits → api_operations → api_describe → api_call`，使用 fake transport 验证固定 URL 仅存在于 Host 请求而不进入结果，并验证 JSON 响应脱敏；停用 Kit 后下一次动态上下文为空且工具返回 `KIT_DISABLED`。新增 `test/runtime-context.test.mjs` 覆盖空/失效激活、单/多 Kit、共享 Operation 去重、只读/写计数、生产/文本边界和敏感字段排除；新增 `test/context-registration.test.mjs` 覆盖 Provider 注册、两个 Session 隔离、按组装重读和 disposer。
+- **Bundle/文档**：将 `lib/runtime-context.js` 纳入 `package.json`、manifest 检查和测试清单；更新中英文 README、CHANGELOG 与本计划。未新增 DSH runtime import 或 peer dependency，保持 Host/Client 发布边界。
+- **验收命令与结果**：T10 定向测试 `8/8` 通过；全量 `pnpm test` `108/108` 通过；T10 相关语法检查、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 均通过。使用临时 `DSH_HOME` 安装本地 tgz，并以 `dsh --profile web --no-open --port 0` 成功启动隔离 Profile，实际输出 `http://127.0.0.1:61749`；未触碰当前 `http://127.0.0.1:3080`，未执行浏览器交互或模型调用，因此不宣称 UI/模型步验收已完成。
+- **设计边界**：T10 不导入 OpenAPI，不增加写请求/人工确认/OAuth2/SSE/WebSocket/自动重定向/隐式重试/独立 MCP Server；不改变 T09 的固定 IP transport、SSRF、响应治理和审计策略。
+- **下一步建议**：进入 T11，先实现 OpenAPI JSON 导入预览，并复用现有 Registry、Operation 校验和动态上下文安全视图。
 
 ---
 

@@ -4,7 +4,7 @@
 
 ## Status
 
-T09 is complete on top of the T08 fixed-target read-only executor. The bundle now provides execution-time DNS/IP/CIDR SSRF checks, pinned-IP connections, redirect denial, recursive JSON redaction, and Host-only local JSONL auditing. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
+T10 is complete on top of the T09 fixed-target read-only executor. The bundle now provides per-assembly, session-scoped dynamic runtime context in addition to execution-time DNS/IP/CIDR SSRF checks, pinned-IP connections, redirect denial, recursive JSON redaction, and Host-only local JSONL auditing. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
 
 - Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
 - `api_call` accepts only a stable `operationId` and declared parameters, and currently executes GET/HEAD only.
@@ -32,6 +32,10 @@ T09 is complete on top of the T08 fixed-target read-only executor. The bundle no
 
 Recommended flow: `api_kits → api_operations → api_describe → api_call`. The model must not guess URLs, hosts, credentials, or bypass session activation.
 
+## Dynamic runtime context
+
+For every model-step prompt assembly, the Host provider re-reads the current session activation and Registry state using the Agent's authoritative session ID. It contributes a short summary containing active Kit names/descriptions, the selected Environment, discoverable/read-only/write counts, fixed tool names, the discovery-to-call workflow, and the read-only/SSRF/response/audit boundaries. It never includes base URLs, concrete hosts or CIDRs, credential references or values, request headers/cookies, or full OpenAPI schemas. Disabling or clearing a Kit or Environment is reflected on the next assembly; the DSH runtime projection replaces or clears the previous snapshot.
+
 ## Installation
 
 ```powershell
@@ -50,7 +54,7 @@ pnpm pack --dry-run
 
 ## Security boundary
 
-T09 still does not implement OpenAPI import, dynamic context, write operations, OAuth2, file upload, SSE/WebSocket, automatic redirects, implicit retries, or an independent MCP Server. Private access requires explicit matching CIDRs. This bundle is not an arbitrary-URL internet or intranet proxy.
+T10 still does not implement OpenAPI import, write operations, OAuth2, file upload, SSE/WebSocket, automatic redirects, implicit retries, or an independent MCP Server. Private access requires explicit matching CIDRs. This bundle is not an arbitrary-URL internet or intranet proxy.
 
 ## License
 
