@@ -41,7 +41,7 @@ test('常量定义覆盖 MVP 方法、认证和默认限制', () => {
   assert.deepEqual(READ_METHODS, ['GET', 'HEAD'])
   assert.deepEqual(WRITE_METHODS, ['POST', 'PUT', 'PATCH', 'DELETE'])
   assert.ok(SUPPORTED_METHODS.includes('OPTIONS'))
-  assert.deepEqual(AUTH_TYPES, ['none', 'bearer', 'api-key-header', 'api-key-query', 'basic'])
+  assert.deepEqual(AUTH_TYPES, ['none', 'bearer', 'api-key-header', 'api-key-query', 'basic', 'oauth2-client-credentials'])
   assert.equal(DEFAULT_TIMEOUT_MS, 15000)
   assert.equal(DEFAULT_MAX_RESPONSE_BYTES, 512 * 1024)
   assert.equal(REGISTRY_SCHEMA_VERSION, 1)
@@ -132,6 +132,17 @@ test('environment 从 baseUrl 推导 host，不接受危险协议、查询和凭
   assert.equal(normalizeEnvironment({ baseUrl: 'file:///etc/passwd' }).baseUrl, '')
   assert.equal(normalizeEnvironment({ baseUrl: 'https://user:pass@example.test' }).baseUrl, '')
   assert.equal(normalizeEnvironment({ baseUrl: 'https://example.test?a=1' }).baseUrl, '')
+})
+
+test('未知 auth type 不会在 registry normalize 时静默降级为 none', () => {
+  assert.throws(() => normalizeRegistry({ authProfiles: [{ id: 'bad', type: 'mystery' }] }), (error) => error.code === 'AUTH_TYPE_UNSUPPORTED')
+})
+
+test('OAuth2 auth profile 保留兼容配置字段', () => {
+  const auth = normalizeAuthProfile({ id: 'oauth', type: 'oauth2-client-credentials', tokenEndpoint: 'https://issuer.example.test/oauth/token', clientId: 'client', scope: 'read' })
+  assert.equal(auth.type, 'oauth2-client-credentials')
+  assert.equal(auth.tokenEndpoint, 'https://issuer.example.test/oauth/token')
+  assert.equal(auth.clientId, 'client')
 })
 
 test('service target/auth profile 使用安全视图字段且默认关闭危险能力', () => {

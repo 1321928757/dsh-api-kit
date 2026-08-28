@@ -4,16 +4,18 @@
 
 ## 当前状态
 
-当前版本已完成 T13：在 T12 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 有界解析、规范化、预览和原子确认事务基础上，完善设置页与会话选择器的主题、键盘、焦点、窄屏和错误恢复体验。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
+当前版本已完成 T14：在 T13 设置页与会话选择器体验基础上，加入受策略约束的写请求确认门和 OAuth2 Client Credentials（Host-only）支持。当前工具为 `api_kits`、`api_operations`、`api_describe`、`api_call`、`api_write_prepare` 和 `api_write_execute`。
 
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
-- `api_call` 只接受稳定 `operationId` 与已声明参数，当前只执行 GET/HEAD。
+- `api_call` 只接受稳定 `operationId` 与已声明参数；GET/HEAD 直接执行，写方法只生成确认意图且不联网。
+- `api_write_prepare` 只准备受策略允许的 POST/PUT/PATCH/DELETE 请求并生成短期、单次、绑定当前 Session/环境/Registry 的确认 token；`api_write_execute` 只有在 Host 确认状态为 approved 时才会联网。
 - 目标只来自登记的 Environment `baseUrl` 与 Operation path，不接受模型传入 URL、host、sessionId、代理或重定向策略。
 - Environment 的 host 必须在 `allowedHosts` 中；每次调用对 DNS 返回的全部地址做校验，任一地址为 loopback、link-local、metadata、保留、文档测试网段、IPv4-mapped 高风险地址则拒绝。
 - RFC1918、IPv6 ULA 和 CGNAT 私网地址还必须同时满足 `allowPrivateNetwork: true` 与匹配的 `allowedCidrs`；仅设置 hostname 白名单不能放行私网。
 - 请求连接固定到已校验的 IP；HTTPS 仍使用登记 hostname 作为 TLS SNI 和 Host，避免 DNS rebinding。生产 pinned transport 不使用代理、自动重试或自动重定向。
 - 301/302/303/307/308 只返回安全错误 `REDIRECT_NOT_ALLOWED`，不读取或返回 `Location`。
-- JSON 成功和错误响应在返回前按默认及 Operation `policy.redactKeys` 递归脱敏，再执行深度、数组、字符串、对象 key 和字节治理；不返回响应 Header。
+- JSON 成功和错误响应在返回前按默认及 Operation `policy.redactKeys` 递归脱敏；文本、XML、JavaScript、未知类型和非 2xx 响应也执行保守敏感值脱敏，再执行深度、数组、字符串、对象 key 和字节治理；不返回响应 Header。
+- OAuth2 仅支持 HTTPS 固定 token endpoint、Client Credentials、`client_secret_basic`/`client_secret_post`；secret 只从 Host credentials 按次解析，token 缓存按 Profile/Environment 隔离并拒绝自动重定向。
 - 每次 `api_call` 的实际调用和策略拒绝都写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`。审计按白名单字段写入，默认懒清理 14 天前文件；写失败不影响业务结果，并仅保留 Host 内部诊断。
 
 ## T13 UI 质量与可用性
@@ -37,9 +39,11 @@
 - `api_kits`：列出当前会话的安全 Kit/Environment 摘要。
 - `api_operations`：按关键词、Tag、HTTP method、Service Target 和分页发现 Operation。
 - `api_describe`：按稳定 `operationId` 返回完整安全调用说明。
-- `api_call`：按描述调用固定 GET/HEAD Operation；参数只允许声明的 path/query/业务 Header。
+- `api_call`：按描述调用固定 Operation；读请求执行，写请求仅生成确认意图。
+- `api_write_prepare`：准备符合双重写策略的写请求，不联网，返回短期确认意图。
+- `api_write_execute`：使用 Host 已批准且完整绑定的确认 token 执行一次写请求；模型没有 approve 工具。
 
-推荐顺序：`api_kits → api_operations → api_describe → api_call`。模型不得猜测 URL、主机、认证值或绕过会话激活。
+推荐顺序：`api_kits → api_operations → api_describe → api_call`；写操作为 `api_write_prepare → 人工确认 → api_write_execute`。模型不得猜测 URL、主机、认证值或绕过会话激活，也不能自行批准确认 token。
 
 ## 动态运行时上下文
 
@@ -58,7 +62,7 @@ T12 在设置页提供“导入 OpenAPI JSON”流程：粘贴 JSON → 读取�
 T11 提供 DSH 无关的 `buildOpenApiImportPreview(input, options)`（同时导出 `previewOpenApiImport`），支持 OpenAPI 3.0/3.1 和 Swagger 2.0 JSON 字符串或对象。解析器只解析文档内的 JSON Pointer `$ref`，有界转换路径、参数、请求体、响应、Server 候选和认证模板，并生成稳定的 Operation 来源键及 new/update/conflict/skip 预览分类。
 
 - `serverCandidates` 仅是 display-only 的用户确认候选，不会自动创建或信任 Environment；Swagger `host/basePath/schemes` 同样不会直接成为调用目标。
-- 认证模板只包含 Bearer、Basic、Header/Query API Key 的非敏感元数据；不保存 secret，Query API Key 默认关闭。OAuth2、OpenID Connect、mTLS、远程 `$ref`、YAML、URL/Git 导入不在 T11 范围内。
+- 认证模板只包含 Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials 的非敏感元数据；不保存 secret，Query API Key 默认关闭。OpenID Connect、mTLS、远程 `$ref`、YAML、URL/Git 导入不在导入范围内。OAuth2 不支持 authorization code、PKCE、OIDC discovery、refresh token、浏览器回调或任意 token endpoint。
 - 预览只接收内存中的 JSON，不读文件、不联网、不修改 Registry 或输入对象；候选未绑定已登记 Service Target/Auth Profile 时标记 `needsBinding`，需 T12 的确认事务处理。
 - 非法版本、坏路径、外部/循环/缺失引用、危险 Header、非法响应状态和文件上传会产生结构化诊断，不静默生成可调用定义；写操作仍保持默认不可由 Agent 执行。
 
@@ -80,7 +84,7 @@ pnpm pack --dry-run
 
 ## 安全边界
 
-T10 仍不实现 OpenAPI 导入、写操作、OAuth2、文件上传、SSE/WebSocket、自动重定向、隐式重试或独立 MCP Server。私网放行必须是明确 CIDR；本实现不接受任意 URL，也不把 T09 的固定目标调用当作通用互联网代理。
+T14 的写操作与 OAuth2 默认仍关闭，只有 Operation 与 Kit 同时允许且写请求具备人工批准的短期绑定确认才会联网。当前审批 RPC 已提供 Host 侧 approve/reject/cancel；没有可用的人工作答复或审批 UI 时，写执行会 fail closed。OAuth2 仅支持 HTTPS Client Credentials，token endpoint 必须落在当前 Environment 的 allowlist 并经 DNS/IP 校验；不支持 authorization code、PKCE、refresh token、OIDC discovery、浏览器回调、文件上传、SSE/WebSocket、自动重定向、隐式重试或独立 MCP Server。私网放行必须是明确 CIDR；本实现不接受任意 URL，也不把固定目标调用当作通用互联网代理。
 
 ## 参考链接
 

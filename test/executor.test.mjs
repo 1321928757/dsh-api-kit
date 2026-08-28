@@ -113,7 +113,7 @@ test('query arrays and booleans are rendered and authentication cannot be overri
 test('write methods, confirmation policies, cookie parameters and bodies fail closed', async () => {
   const { config } = await setup({ operation: { method: 'POST', policy: { allowAgentCall: true, allowWrite: true } } })
   const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response()) })
-  assert.equal((await executor.execute({ operationId: 'user' }, exec())).error.code, 'METHOD_NOT_ALLOWED')
+  assert.equal((await executor.execute({ operationId: 'user' }, exec())).error.code, 'OPERATION_NOT_FOUND')
 
   const readSetup = await setup({ operation: { policy: { allowAgentCall: true, requiresConfirmation: true } } })
   const readExecutor = createApiKitHttpExecutor(readSetup.config, { transport: fakeTransport(response()) })
@@ -138,11 +138,30 @@ test('JSON and text responses are projected, status errors remain safe, and over
   const text = await textExecutor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())
   assert.deepEqual(text.response, { kind: 'text', text: 'plain text' })
 
-  const statusExecutor = createApiKitHttpExecutor(config, { transport: fakeTransport(response(404, '{"message":"not found"}')) })
+  for (const contentType of ['text/plain', 'application/xml', 'text/javascript', undefined, 'application/octet-stream']) {
+    const body = 'message=ok Authorization: Bearer bearer-secret Cookie: sid=cookie-secret token=token-secret password="password-secret" secret: xml-secret api-key=key-secret'
+    const responseFixture = contentType === undefined
+      ? { status: 200, body: new TextEncoder().encode(body) }
+      : response(200, body, contentType)
+    const leakExecutor = createApiKitHttpExecutor(config, { transport: fakeTransport(responseFixture) })
+    const safe = await leakExecutor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())
+    assert.equal(safe.response.kind, 'text')
+    assert.equal(safe.response.text.includes('bearer-secret'), false)
+    assert.equal(safe.response.text.includes('cookie-secret'), false)
+    assert.equal(safe.response.text.includes('token-secret'), false)
+    assert.equal(safe.response.text.includes('password-secret'), false)
+    assert.equal(safe.response.text.includes('xml-secret'), false)
+    assert.equal(safe.response.text.includes('key-secret'), false)
+    assert.match(safe.response.text, /\[REDACTED\]/)
+  }
+
+  const statusExecutor = createApiKitHttpExecutor(config, { transport: fakeTransport(response(404, 'Authorization: Bearer error-secret token=error-token', 'text/plain')) })
   const status = await statusExecutor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())
   assert.equal(status.ok, false)
   assert.equal(status.error.code, 'HTTP_STATUS')
   assert.equal(status.status, 404)
+  assert.equal(status.response.text.includes('error-secret'), false)
+  assert.equal(status.response.text.includes('error-token'), false)
 
   const largeExecutor = createApiKitHttpExecutor(config, { maxOutputBytes: 8, transport: fakeTransport(response(200, '0123456789', 'text/plain')) })
   const large = await largeExecutor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())

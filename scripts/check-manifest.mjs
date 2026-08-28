@@ -27,6 +27,8 @@ const expectedFiles = [
   'lib/discovery.js',
   'lib/agent-tools.js',
   'lib/executor.js',
+  'lib/oauth2.js',
+  'lib/write-confirmation.js',
   'lib/transport.js',
   'lib/ip.js',
   'lib/ssrf.js',
@@ -36,6 +38,9 @@ const expectedFiles = [
   'lib/openapi-import.js',
   'lib/openapi-import-transaction.js',
   'test/client-contract.test.mjs',
+  'test/oauth2.test.mjs',
+  'test/write-confirmation.test.mjs',
+  'test/write-executor.test.mjs',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -72,11 +77,11 @@ if (!/export const name\s*=\s*['"]dsh-api-kit['"]/.test(host)) fail('Host entry 
 if (!/configuration\.js/.test(host)) fail('Host entry must reference configuration service')
 if (!/id:\s*['"]dsh-api-kit['"]/.test(client)) fail('Client entry must load with dsh-api-kit id')
 if (!/package:\s*['"]dsh-api-kit['"]/.test(typert) || !/face:\s*['"]host['"]/.test(typert)) fail('Typert manifest must declare package and host face')
-for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation']) {
+for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation', 'approveWriteConfirmation', 'rejectWriteConfirmation', 'cancelWriteConfirmation']) {
   if (!new RegExp(`['"]${method}['"]`).test(typert)) fail(`Typert manifest is missing ${method}`)
 }
 if (!/key:\s*['"]apiKitConfig['"]/.test(typert) || !/namespace:\s*['"]api-kit['"]/.test(typert)) fail('Typert manifest must declare the api-kit namespace')
-for (const tool of ['api_kits', 'api_operations', 'api_describe', 'api_call']) {
+for (const tool of ['api_kits', 'api_operations', 'api_describe', 'api_call', 'api_write_prepare', 'api_write_execute']) {
   if (!new RegExp(`name:\\s*['"]${tool}['"]`).test(await read('lib/agent-tools.js'))) fail(`Agent tool is missing ${tool}`)
 }
 if (!/createApiKitAgentTools/.test(host) || !/tools\.register/.test(host) || !/createApiKitHttpExecutor/.test(await read('lib/executor.js'))) fail('Host entry must register Agent API tools and executor')

@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T13 设置页 UI 质量、主题、可用性和隔离回归已完成，准备进入 T14
+- **当前阶段**：T14 写接口、人工确认和 OAuth 已完成，进入 T15 预留
 - **最后更新**：2026-08-29
 
 ---
@@ -129,7 +129,7 @@ T02 + T08 + T09 → T15
 | T11 | OpenAPI JSON 导入器 | M1 | 已完成 | T02/T03/T05 |
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 已完成 | T11 |
 | T13 | UI 质量、主题、可用性和回归 | M1 | 已完成 | T10/T12 |
-| T14 | 写接口、人工确认和 OAuth | M2 | 未开始 | T09/T13 |
+| T14 | 写接口、人工确认和 OAuth | M2 | 已完成 | T09/T13 |
 | T15 | 独立 MCP Server 适配器 | M3 | 未开始 | T02/T08/T09 |
 
 ---
@@ -340,6 +340,20 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **验收命令与结果**：T12 定向事务/Host/manifest 测试 `18/18` 通过；全量 `pnpm test` `126/126` 通过；`node --check`、`pnpm run check`、`pnpm pack --dry-run`、`git diff --check` 通过。当前 3080 GUI 未重启、未替换、未刷新；未宣称真实浏览器 UI 或模型调用验收。
 - **剩余限制**：当前 T12 只允许绑定已登记 Target/Environment/Auth Profile/Kit，不自动创建配置实体；多 Server 复杂路由需要逐 Operation 显式绑定；仍不支持 YAML、URL/Git、远程 `$ref`、OAuth2、文件上传、SSE/WebSocket、写操作确认和独立 MCP Server。
 - **下一步建议**：进入 T13，集中处理设置页交互质量、主题、窄屏/键盘可用性、错误状态和真实隔离 Profile 回归。
+
+---
+
+### 2026-08-29 / T14
+
+- **状态：已完成**。新增 Host-only OAuth2 Client Credentials、策略门禁写请求、短期单次确认意图、确认 RPC 和生命周期清理。
+- **运行时与安全**：写请求仅支持 POST/PUT/PATCH/DELETE；Operation 必须同时允许 Agent、写入并要求确认，Kit 必须允许写入并允许对应 method。`api_write_prepare` 不联网，`api_write_execute` 只消费完整绑定且 Host 已批准的 token。确认绑定 Session、Operation、Method、Target、Environment、request fingerprint 与 Registry fingerprint，模型无 approve 工具；可选 DSH approval Service 只有 `allowed-once` 才批准，其余结果 fail closed。
+- **OAuth**：仅支持 HTTPS 固定 token endpoint 和 Client Credentials，认证方式为 `client_secret_basic` 或 `client_secret_post`。secret 由 Host credentials 按次解析；响应有界、字段严格校验；token cache 按 scope/audience 及 Profile/Environment/transport 隔离；当前环境执行 allowlist、DNS/IP SSRF 校验、固定地址 transport 和 manual redirect。
+- **响应与配置安全**：文本、XML、JavaScript、未知类型及非 2xx 响应进行保守敏感值脱敏；safe auth view 不返回 secretRef/token/password/cookie/authorization；未知认证类型拒绝而非降级为 none；`configuration.load()` 只返回受控状态，不返回原始 Registry。
+- **RPC/发布文件**：新增 `approveWriteConfirmation`、`rejectWriteConfirmation`、`cancelWriteConfirmation` Typert/Gateway 方法；将 OAuth、确认模块及测试纳入 package files/check-manifest；更新中英文 README 与 CHANGELOG。
+- **测试结果**：`node --test test/*.test.mjs` 159/159 通过；`npm run check` 和 `git diff --check` 通过；T14 专项覆盖 OAuth 15 项、确认 9 项、写执行、文本脱敏、未知 Auth type 与 manifest。
+- **发布验收**：`pnpm pack --dry-run` 与 tgz import smoke 通过；包 `dsh-api-kit-0.1.0.tgz` SHA-256 为 `3A41B6A9C061239CC5C4857FD4369B1C23D4109FB2B7C7113DE864933927554B`。使用临时 `DSH_HOME` 将 tgz 安装进独立 `t14-api-kit` Profile，并启动 `dsh --profile t14-api-kit --no-open --port 0`；启动进程保持运行，随后已停止测试进程。首次使用错误是 PowerShell 将 `$home` 视为只读变量，修正为 `$homePath` 后完成。
+- **已知限制**：当前没有新增未经 Inspect 的 Client approval Slot；无 approval Service 时 prepare 可返回 pending token 但不可执行，真实浏览器确认 UI 仍未自动化验收。OAuth 不支持 authorization code、PKCE、OIDC discovery、refresh token、浏览器回调、mTLS、任意 endpoint；不支持 multipart/upload、SSE/WebSocket、自动重定向、隐式重试。T14 不触碰当前 `http://127.0.0.1:3080`。
+- **下一步建议**：T14 已完成；如继续开发，进入 T15 独立 MCP 适配器评估。
 
 ---
 

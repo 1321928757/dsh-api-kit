@@ -42,4 +42,11 @@
 - Improved the settings page and session Kit picker for keyboard operation, focus-visible states, Escape handling, focus restoration, semantic status/error announcements, and accessible form labels.
 - Added request-generation and mounted guards to prevent stale RPC responses from overwriting current Session or settings state; binding lists now preserve partial results and expose retry actions.
 - Added explicit JSON field validation that preserves drafts, actionable import/preview error guidance, duplicate-action guards, and consistent busy/success feedback.
-- Updated Client styling to use the inspected DSH light/dark tokens, responsive 720px/520px layouts, viewport-bounded picker behavior, 44px controls, long-text wrapping, and reduced-motion support. T13 does not change Host/RPC behavior or enter write-operation/OAuth work.
+- Updated Client styling to use the inspected DSH light/dark tokens, responsive 720px/520px layouts, viewport-bounded picker behavior, 44px controls, long-text wrapping, and reduced-motion support.
+
+## Unreleased / T14
+
+- Added Host-only OAuth2 Client Credentials profiles with HTTPS endpoint validation, Environment-bound DNS/IP pinning, manual redirect denial, bounded response parsing, request-time credential resolution, cache isolation, single-flight refresh, and safe OAuth metadata views.
+- Added policy-gated POST/PUT/PATCH/DELETE preparation and execution. A write requires both Operation and Kit write policy, a short-lived one-shot confirmation intent, complete Session/target/Environment/request/Registry binding, and Host approval; the model has no approval tool.
+- Added `api_write_prepare` and `api_write_execute`, Host confirmation RPC methods for approve/reject/cancel, lifecycle cleanup, conservative text/error response redaction, stable confirmation error codes, and expanded regression/manifest coverage.
+- T14 does not add authorization-code/PKCE/OIDC discovery, refresh-token persistence, browser callbacks, arbitrary token endpoints, multipart/uploads, SSE/WebSocket, automatic redirects, or implicit retries.

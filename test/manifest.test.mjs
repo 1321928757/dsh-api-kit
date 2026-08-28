@@ -73,6 +73,23 @@ test('T05 Typert manifest exposes only safe configuration methods', async () => 
   assert.doesNotMatch(typert, /api_call|api_kits|api_operations/)
 })
 
+test('T14 exposes OAuth and write-confirmation contracts in Typert and model tools', async () => {
+  const typert = await read('lib/typert.host.js')
+  const model = await read('lib/model.js')
+  const validation = await read('lib/config-validation.js')
+  const tools = await read('lib/agent-tools.js')
+  for (const name of ['approveWriteConfirmation', 'rejectWriteConfirmation', 'cancelWriteConfirmation']) {
+    assert.match(typert, new RegExp(`argsMethod\\('${name}'\\)`))
+    assert.match(typert, new RegExp(`member\\('${name}', '${name}\\(args: object\\): object'`))
+  }
+  assert.match(model, /oauth2-client-credentials/)
+  assert.match(validation, /oauth2-client-credentials/)
+  assert.match(tools, /name: 'api_write_prepare'/)
+  assert.match(tools, /name: 'api_write_execute'/)
+  assert.match(tools, /confirmationToken/)
+  assert.match(tools, /required: \['operationId'\]/)
+})
+
 test('T07 registers fixed Agent discovery tools without HTTP execution', async () => {
   const host = await read('lib/index.js')
   const tools = await read('lib/agent-tools.js')
@@ -133,6 +150,8 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/discovery.js',
     'lib/agent-tools.js',
     'lib/executor.js',
+    'lib/oauth2.js',
+    'lib/write-confirmation.js',
     'lib/transport.js',
     'lib/ip.js',
     'lib/ssrf.js',
@@ -142,6 +161,9 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/openapi-import.js',
     'lib/openapi-import-transaction.js',
     'test/client-contract.test.mjs',
+    'test/oauth2.test.mjs',
+    'test/write-confirmation.test.mjs',
+    'test/write-executor.test.mjs',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

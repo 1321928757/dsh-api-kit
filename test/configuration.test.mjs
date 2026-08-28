@@ -41,6 +41,26 @@ test('configuration CRUD supports target multi-environment and auth relations', 
   assert.equal('secretRef' in (await config.getAuthProfile('token')), false)
 })
 
+test('未知 auth type 在创建和 registry load/import validation 时都被拒绝', async () => {
+  const context = await loadedSetup()
+  const { config, store, fs } = context
+  await assert.rejects(config.createAuthProfile({ id: 'bad', type: 'mystery' }), (error) => error.code === 'AUTH_TYPE_UNSUPPORTED')
+  await fs.writeFile(FILE, JSON.stringify({ schemaVersion: 1, kits: [], operations: [], serviceTargets: [], environments: [], authProfiles: [{ id: 'bad', type: 'mystery' }] }), 'utf8')
+  const result = await store.load()
+  assert.equal(result.recovered, true)
+  assert.equal(store.getDiagnostics().code, 'NORMALIZATION_INVALID')
+})
+
+test('OAuth2 client credentials profile remains valid and safe view omits endpoint URL', async () => {
+  const { config } = await loadedSetup()
+  await config.createAuthProfile({ id: 'oauth', type: 'oauth2-client-credentials', tokenEndpoint: 'https://issuer.example.test/oauth/token', clientId: 'client', scope: 'read', secretRef: 'credential:oauth' })
+  const view = await config.getAuthProfile('oauth')
+  assert.equal(view.type, 'oauth2-client-credentials')
+  assert.equal(view.tokenEndpointHost, 'issuer.example.test')
+  assert.equal(view.tokenEndpointPath, '/oauth/token')
+  assert.equal(JSON.stringify(view).includes('https://issuer.example.test'), false)
+})
+
 test('default environment must be bound and duplicate IDs are rejected', async () => {
   const { config } = await loadedSetup()
   await assert.rejects(config.createServiceTarget({ id: 'backend', environmentIds: ['dev'], defaultEnvironmentId: 'prod' }), (error) => error.code === 'DEFAULT_ENVIRONMENT_NOT_BOUND')
