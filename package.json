@@ -45,6 +45,7 @@
     "lib/runtime-context.js",
     "lib/openapi-import.js",
     "lib/openapi-import-transaction.js",
+    "test/client-contract.test.mjs",
     "cordis.patch.yml",
     "README.md",
     "README.zh-CN.md",

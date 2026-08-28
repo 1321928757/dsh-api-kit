@@ -52,6 +52,10 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(client, /previewOpenApiImport/)
   assert.match(client, /confirmOpenApiImport/)
   assert.match(client, /data-t12-import/)
+  assert.match(client, /focus-visible/)
+  assert.match(client, /prefers-reduced-motion:reduce/)
+  assert.match(client, /aria-modal/)
+  assert.match(client, /parseJsonValue/)
   assert.match(typert, /name: item, wire: item/)
   assert.match(typert, /schema: jsonSchema/)
 })
@@ -137,6 +141,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/runtime-context.js',
     'lib/openapi-import.js',
     'lib/openapi-import-transaction.js',
+    'test/client-contract.test.mjs',
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',

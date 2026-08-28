@@ -4,7 +4,7 @@
 - **对应需求**：[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)
 - **计划版本**：v0.1 MVP → v0.4
 - **文档状态**：实施基线
-- **当前阶段**：T12 OpenAPI 导入确认事务、冲突、Tag 与多服务绑定已完成，准备进入 T13
+- **当前阶段**：T13 设置页 UI 质量、主题、可用性和隔离回归已完成，准备进入 T14
 - **最后更新**：2026-08-29
 
 ---
@@ -128,7 +128,7 @@ T02 + T08 + T09 → T15
 | T10 | 动态上下文和 MVP 端到端验收 | M0 | 已完成 | T06/T07/T08/T09 |
 | T11 | OpenAPI JSON 导入器 | M1 | 已完成 | T02/T03/T05 |
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 已完成 | T11 |
-| T13 | UI 质量、主题、可用性和回归 | M1 | 未开始 | T10/T12 |
+| T13 | UI 质量、主题、可用性和回归 | M1 | 已完成 | T10/T12 |
 | T14 | 写接口、人工确认和 OAuth | M2 | 未开始 | T09/T13 |
 | T15 | 独立 MCP Server 适配器 | M3 | 未开始 | T02/T08/T09 |
 
@@ -340,6 +340,21 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **验收命令与结果**：T12 定向事务/Host/manifest 测试 `18/18` 通过；全量 `pnpm test` `126/126` 通过；`node --check`、`pnpm run check`、`pnpm pack --dry-run`、`git diff --check` 通过。当前 3080 GUI 未重启、未替换、未刷新；未宣称真实浏览器 UI 或模型调用验收。
 - **剩余限制**：当前 T12 只允许绑定已登记 Target/Environment/Auth Profile/Kit，不自动创建配置实体；多 Server 复杂路由需要逐 Operation 显式绑定；仍不支持 YAML、URL/Git、远程 `$ref`、OAuth2、文件上传、SSE/WebSocket、写操作确认和独立 MCP Server。
 - **下一步建议**：进入 T13，集中处理设置页交互质量、主题、窄屏/键盘可用性、错误状态和真实隔离 Profile 回归。
+
+---
+
+### 2026-08-29 / T13
+
+- **状态：已完成（浏览器 UI 仍需手工/真实浏览器驱动验收）**。集中改进 `lib/client.js` 的设置页和输入栏 API Kit 选择器，不改变 T10/T12 Host 业务语义、Typert RPC 参数或安全边界。
+- **UI 与无障碍**：继续使用运行时 Inspect 确认的 `settings.section` 和 `conversation.input.left`；增加明确 label/id 关系、`fieldset/legend`、`aria-expanded`/`aria-controls`/`aria-modal`/`aria-labelledby`、`role=alert`/`role=status`/`aria-live`、可见 `:focus-visible`、Escape 关闭、Tab 循环和关闭后焦点恢复。主要控件保持至少 44px 高度。
+- **异步与错误恢复**：读取、预览、确认和设置刷新使用 mounted/request-generation guard，避免 Session 切换、连续刷新或组件卸载后的旧 RPC 响应覆盖新状态；绑定列表允许部分成功并提供重试；JSON 字段解析失败不再静默回退，而是在字段附近显示错误并保留草稿；事务错误提示重新预览等修复动作。
+- **主题与响应式**：使用当前 Inspect 确认的背景、边框、文字、品牌和错误/警告/成功令牌，移除未确认的 surface 令牌；为 `color-mix` 提供令牌回退；增加 720px/520px 单列和换行布局、viewport 边界、长文本换行及 `prefers-reduced-motion` 支持。
+- **测试与范围**：新增 `test/client-contract.test.mjs`，覆盖 Slot/JSON-only 边界、主题令牌、响应式/reduced-motion、焦点语义、stale guard、字段级 JSON 错误和 retry 文案。未新增 Host Service、Event、Slot、HTTP 路由或 T14 的写执行/人工确认/OAuth 能力。
+- **隔离回归计划**：仓库没有专用浏览器自动化脚本；最终验收将使用新生成的本地 tgz、一次性 `DSH_HOME`、独立 profile 和随机端口启动，不触碰当前 `http://127.0.0.1:3080`。若无可重复浏览器驱动，将仅报告隔离 Profile 启动结果和未自动化的 UI checklist，不虚报完整 UI 验收。
+- **本地验收结果**：`node --check lib\*.js`、`node test\client-contract.test.mjs`、`pnpm test`（`130/130`）、`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 均通过；包清单包含 T13 客户端合同测试。
+- **隔离 Profile 结果**：使用新生成的 `dsh-api-kit-0.1.0.tgz`（SHA-256 `E1861D2F1F66CF0400390943A448A4D68A41951BEB13BFCB88DFE774B8DDDFEC`）、临时 `DSH_HOME` 和独立 `t13-api-kit` profile 安装成功；启动进程保持运行但本次命令未观察到可记录的监听 URL，随后已停止并清理临时 HOME。当前 `127.0.0.1:3080` 仍由原进程 `7256` 提供，未重启、替换或刷新。
+- **浏览器限制**：仓库及当前环境没有已接入的专用 Playwright smoke 脚本，本次未在临时 URL 上完成真实浏览器的设置页、主题、键盘和窄屏交互；因此不宣称浏览器 UI smoke 通过。T13 代码/合同/隔离安装验收已完成，真实浏览器验收保留为后续发布前检查。
+- **下一步建议**：进入 T14；发布前应在可重复的浏览器驱动或人工浏览器环境中补做 T13 checklist，且继续保持当前 3080 保护和 T14 写操作/OAuth 边界。
 
 ---
 

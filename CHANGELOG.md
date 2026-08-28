@@ -36,3 +36,10 @@
 - Added Host configuration/Gateway and Typert/Client descriptors for `previewOpenApiImport` and `confirmOpenApiImport`, plus a settings-page JSON paste/preview/bind/confirm workflow with explicit second confirmation.
 - Server URLs remain display-only; the transaction does not create environments, import secrets, access the network, or enable write Operations for Agent execution. Archive persistence remains separate and best-effort after a successful Registry commit.
 - Added T12 transaction tests, manifest checks, and package inclusion for the transaction module.
+
+## Unreleased / T13
+
+- Improved the settings page and session Kit picker for keyboard operation, focus-visible states, Escape handling, focus restoration, semantic status/error announcements, and accessible form labels.
+- Added request-generation and mounted guards to prevent stale RPC responses from overwriting current Session or settings state; binding lists now preserve partial results and expose retry actions.
+- Added explicit JSON field validation that preserves drafts, actionable import/preview error guidance, duplicate-action guards, and consistent busy/success feedback.
+- Updated Client styling to use the inspected DSH light/dark tokens, responsive 720px/520px layouts, viewport-bounded picker behavior, 44px controls, long-text wrapping, and reduced-motion support. T13 does not change Host/RPC behavior or enter write-operation/OAuth work.

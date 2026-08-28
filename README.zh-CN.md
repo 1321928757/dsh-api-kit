@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前版本已完成 T12：在 T11 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 有界解析、规范化和预览计划基础上，加入预览→绑定→冲突决策→确认的原子导入事务、Tag 筛选和设置页入口。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
+当前版本已完成 T13：在 T12 OpenAPI 3.0/3.1 与 Swagger 2.0 JSON 有界解析、规范化、预览和原子确认事务基础上，完善设置页与会话选择器的主题、键盘、焦点、窄屏和错误恢复体验。当前工具为 `api_kits`、`api_operations`、`api_describe` 和 `api_call`。
 
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
 - `api_call` 只接受稳定 `operationId` 与已声明参数，当前只执行 GET/HEAD。
@@ -15,6 +15,15 @@
 - 301/302/303/307/308 只返回安全错误 `REDIRECT_NOT_ALLOWED`，不读取或返回 `Location`。
 - JSON 成功和错误响应在返回前按默认及 Operation `policy.redactKeys` 递归脱敏，再执行深度、数组、字符串、对象 key 和字节治理；不返回响应 Header。
 - 每次 `api_call` 的实际调用和策略拒绝都写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`。审计按白名单字段写入，默认懒清理 14 天前文件；写失败不影响业务结果，并仅保留 Host 内部诊断。
+
+## T13 UI 质量与可用性
+
+- 设置页和输入栏选择器使用当前 DSH Inspect 确认的 `--dsw-*` 主题令牌，兼容亮色/暗色表面、文字、边框和状态色；不把 Server URL 当作执行目标。
+- 主要控件保持至少 44px 高度，支持 `:focus-visible`、Tab/Shift+Tab、Enter/Space 和 Escape；选择器打开时管理焦点、循环 Tab，并在关闭后恢复触发按钮焦点。
+- 选择器和设置页在 720px/520px 下改为单列/可换行布局，长名称和诊断文本换行，弹层限制在 viewport 内；用户启用 reduced motion 时停用 spinner/过渡动画。
+- RPC 加载和提交使用请求序号与卸载保护；绑定列表支持局部失败和重试，JSON 字段错误在原字段附近显示并保留草稿。
+- `IMPORT_STALE_PREVIEW` 等事务错误会提示重新预览；成功、空状态、加载中和错误状态均提供文字反馈，不仅依赖颜色。
+- T13 本地合同/全量回归和隔离 Profile 安装已完成；由于仓库没有专用浏览器 smoke 脚本，真实浏览器主题、键盘和窄屏交互仍需发布前在可重复浏览器环境中补验。
 
 ## 会话级套件选择
 

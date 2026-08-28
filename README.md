@@ -4,7 +4,7 @@
 
 ## Status
 
-T12 is complete on top of the T11 bounded OpenAPI 3.0/3.1 and Swagger 2.0 JSON importer. The bundle now provides preview → binding → conflict decision → confirmation with an atomic Registry import transaction, Tag selection, and a settings-page entry. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
+T13 is complete on top of the T12 bounded OpenAPI 3.0/3.1 and Swagger 2.0 JSON importer and atomic confirmation transaction. The settings page and session Kit picker now provide token-based light/dark theming, keyboard/focus support, responsive narrow-screen layouts, stale-response protection, field-level JSON validation, retryable errors, and accessible status feedback. The fixed tools are `api_kits`, `api_operations`, `api_describe`, and `api_call`.
 
 - Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
 - `api_call` accepts only a stable `operationId` and declared parameters, and currently executes GET/HEAD only.
@@ -15,6 +15,15 @@ T12 is complete on top of the T11 bounded OpenAPI 3.0/3.1 and Swagger 2.0 JSON i
 - 301/302/303/307/308 return the safe `REDIRECT_NOT_ALLOWED` error without exposing or following `Location`.
 - JSON success and error bodies are recursively redacted using defaults plus Operation `policy.redactKeys` before depth, array, string, key, and byte governance. Response headers are not returned.
 - Every `api_call` policy rejection and network attempt is written to `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`. Audit records use an allowlist, lazily retain 14 days by default, and never contain credentials, headers, URL, body, stack, or cause. Audit failures do not affect the business result.
+
+## T13 UI quality and usability
+
+- Settings and the session picker consume the DSH Inspect-confirmed `--dsw-*` tokens for light/dark surfaces, text, borders, and state colors; Server URLs remain display-only.
+- Primary controls are at least 44px high and support visible focus, Tab/Shift+Tab, Enter/Space, and Escape. The picker manages focus on open, traps Tab within the dialog, and restores focus to its trigger on close.
+- The settings layout becomes single-column/wrapping at 720px/520px. Long names and diagnostics wrap, the picker stays within the viewport, and reduced-motion users get no spinner/transition animation.
+- RPC loads and submissions use request-generation and unmount guards. Binding lists preserve partial successes and expose retry actions; malformed JSON is reported beside its field while the draft is preserved.
+- Errors such as `IMPORT_STALE_PREVIEW` explain the recovery action, and loading, empty, success, and error states use text/ARIA feedback rather than color alone.
+- T13 local contract/full regression and isolated-profile installation are complete. Because this repository has no dedicated browser smoke script, real browser theme, keyboard, and narrow-screen interaction still require a pre-release check in a repeatable browser environment.
 
 ## Session-scoped Kit selection
 

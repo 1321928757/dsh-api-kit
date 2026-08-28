@@ -35,6 +35,7 @@ const expectedFiles = [
   'lib/runtime-context.js',
   'lib/openapi-import.js',
   'lib/openapi-import-transaction.js',
+  'test/client-contract.test.mjs',
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
@@ -85,6 +86,8 @@ if (!/buildOpenApiImportPreview/.test(importer) || !/openapi-3\.\$\{minor\}/.tes
 const transaction = await read('lib/openapi-import-transaction.js')
 if (!/createOpenApiImportTransactionService/.test(transaction) || !/confirmOpenApiImport/.test(transaction) || !/store\.update/.test(transaction)) fail('T12 import transaction must revalidate and commit atomically')
 if (!/previewOpenApiImport/.test(host) || !/confirmOpenApiImport/.test(host) || !/previewOpenApiImport/.test(typert) || !/confirmOpenApiImport/.test(typert) || !/previewOpenApiImport/.test(client) || !/confirmOpenApiImport/.test(client) || !/data-t12-import/.test(client)) fail('T12 import RPC methods and settings UI must be synchronized')
+if (!/focus-visible/.test(client) || !/prefers-reduced-motion:reduce/.test(client) || !/@media\(max-width:520px\)/.test(client) || !/aria-modal/.test(client) || !/requestRef/.test(client) || !/parseJsonValue/.test(client)) fail('T13 Client UI quality guards are missing')
+try { await read('test/client-contract.test.mjs') } catch { fail('T13 Client contract test is missing') }
 if (/fetch\(|webServer/.test(transaction)) fail('T12 import transaction must remain offline and not expose a web route')
 if (/\bfetch\s*\(/.test(importer)) fail('T11 importer must not perform network access')
 for (const wire of ['id', 'patch', 'enabled', 'input', 'kitId', 'operationIds']) {
