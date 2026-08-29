@@ -30,6 +30,17 @@ test('T13 uses inspected theme tokens and responsive reduced-motion rules', () =
   assert.match(client, /state-success-primary/)
 })
 
+test('T14 aligns the session picker and action buttons with DSH controls', () => {
+  assert.match(client, /dsh-api-kit-picker-button\{height:28px;min-height:28px/)
+  assert.match(client, /background:var\(--dsw-alias-bg-input/)
+  assert.match(client, /button-primary-fill/)
+  assert.match(client, /button-primary-hover/)
+  assert.match(client, /label-primary-foreground/)
+  assert.match(client, /dsh-api-kit-button\.primary:hover:not\(:disabled\)/)
+  assert.match(client, /dsh-api-kit-button\.danger:hover:not\(:disabled\)/)
+  assert.doesNotMatch(client, /\.dsh-api-kit-button\.primary\{background:var\(--dsw-alias-brand-primary\);color:var\(--dsw-alias-label-primary\)/)
+})
+
 test('T13 provides keyboard focus and semantic status/error feedback', () => {
   for (const marker of ['focus-visible', 'aria-expanded', 'aria-controls', 'aria-modal', 'aria-labelledby', 'role: \'alert\'', 'aria-live', 'fieldset', 'legend', 'Escape']) assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(client, /returnFocusRef/)
