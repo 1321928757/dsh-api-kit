@@ -94,9 +94,9 @@ T12 OpenAPI 兼容性、冲突和 Tag 分配
   ↓
 T13 UI 完善、主题、可用性和回归
   ↓
-T14 写操作、确认机制与 OAuth（后续）
+T14 写操作、确认机制与 OAuth
   ↓
-T15 独立 MCP 适配器与发布（后续）
+T15 独立 MCP 适配器与发布（延期/预留）
 ```
 
 依赖关系：
@@ -130,7 +130,7 @@ T02 + T08 + T09 → T15
 | T12 | 导入预览、冲突、Tag 与多服务分配 | M1 | 已完成 | T11 |
 | T13 | UI 质量、主题、可用性和回归 | M1 | 已完成 | T10/T12 |
 | T14 | 写接口、人工确认和 OAuth | M2 | 已完成 | T09/T13 |
-| T15 | 独立 MCP Server 适配器 | M3 | 未开始 | T02/T08/T09 |
+| T15 | 独立 MCP Server 适配器 | M3 | 延期/预留 | T02/T08/T09 |
 
 ---
 
@@ -353,7 +353,7 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 - **测试结果**：`node --test test/*.test.mjs` 159/159 通过；`npm run check` 和 `git diff --check` 通过；T14 专项覆盖 OAuth 15 项、确认 9 项、写执行、文本脱敏、未知 Auth type 与 manifest。
 - **发布验收**：`pnpm pack --dry-run` 与 tgz import smoke 通过；包 `dsh-api-kit-0.1.0.tgz` SHA-256 为 `3A41B6A9C061239CC5C4857FD4369B1C23D4109FB2B7C7113DE864933927554B`。使用临时 `DSH_HOME` 将 tgz 安装进独立 `t14-api-kit` Profile，并启动 `dsh --profile t14-api-kit --no-open --port 0`；启动进程保持运行，随后已停止测试进程。首次使用错误是 PowerShell 将 `$home` 视为只读变量，修正为 `$homePath` 后完成。
 - **已知限制**：当前没有新增未经 Inspect 的 Client approval Slot；无 approval Service 时 prepare 可返回 pending token 但不可执行，真实浏览器确认 UI 仍未自动化验收。OAuth 不支持 authorization code、PKCE、OIDC discovery、refresh token、浏览器回调、mTLS、任意 endpoint；不支持 multipart/upload、SSE/WebSocket、自动重定向、隐式重试。T14 不触碰当前 `http://127.0.0.1:3080`。
-- **下一步建议**：T14 已完成；如继续开发，进入 T15 独立 MCP 适配器评估。
+- **下一步建议**：T15 暂不实现，保持延期/预留；仅在需要让 DSH 之外的 MCP Client 使用 API Kit 时重新评估。
 
 ---
 
@@ -390,5 +390,6 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 
 | 日期 | 版本 | 变更 | 原因 |
 |---|---|---|---|
+| 2026-08-29 | T15 | 将独立 MCP Server 适配器标记为延期/预留，不纳入当前实现。 | 当前核心需求由 DSH 内部 Agent Tools、Host 执行器和确认机制覆盖；仅在未来需要对外提供 MCP 服务时再评估。 |
 | 2026-08-26 | v0.1 | 建立分阶段实施计划，拆分 T00–T15，并定义每个任务的依赖、产出和验收。 | 支持跨多次会话持续推进 |
 | 2026-08-27 | v0.1 | 完成 T01 Bundle 工程骨架、T02 领域模型、T03 Registry、T04 配置和 T05 手工 Operation/Kit CRUD。 | 建立可持续迭代的 API Kit 基础 |
