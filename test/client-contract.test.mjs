@@ -156,6 +156,7 @@ test('UI-08 preserves dialog focus, independent request generations, loading sta
   assert.match(client, /bindingBusyRef\.current = false; setBindingBusy\(false\)/)
   assert.match(client, /const authRequestRef = React\.useRef\(0\)/)
   assert.match(client, /const \[hasLoadedOnce, setHasLoadedOnce\]/)
+  assert.match(client, /kitIds: Array\.isArray\(form\.kitIds\)/)
   assert.match(client, /setHasLoadedOnce\(true\)/)
   assert.match(client, /'aria-pressed': selectedKit === kit\.id/)
   assert.match(client, /\.dsh-api-kit-choice-action:focus-visible/)
