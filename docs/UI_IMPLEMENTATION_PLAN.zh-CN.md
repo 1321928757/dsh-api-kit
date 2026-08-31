@@ -3,7 +3,7 @@
 - **项目**：dsh-api-kit
 - **目标**：将当前“功能平铺”的设置页和会话选择器，调整为作用域清晰、风险可见、流程分阶段、可在真实 DSH Web 中验证的 API 套件工作台。
 - **适用版本**：当前 `0.1.0` profile bundle；客户端入口为 [`../lib/client.js`](../lib/client.js)。
-- **文档状态**：UI-08 进行中；已完成真实挂载与部分视觉/键盘验收，仍需发布前完整失败路径和主题矩阵。
+- **文档状态**：UI-08 进行中；已完成真实挂载与部分视觉/键盘验收，重启后已发现并修复一处 Operation 编辑器崩溃，仍需用户重启最新包后完成发布前完整失败路径和主题矩阵。
 - **创建日期**：2026-08-30
 - **当前 UI 基线**：T13 客户端合同、主题/响应式/键盘基础已完成；T14 Host 写操作、确认意图和 OAuth 能力已完成；UI-08 已完成最新 bundle 的真实 3080 挂载、桌面/窄屏无横溢出、删除 dialog 键盘 trap 和无 console/page error 验收，完整主题/失败路径矩阵仍待完成。
 - **相关文档**：[`IMPLEMENTATION_PLAN.zh-CN.md`](./IMPLEMENTATION_PLAN.zh-CN.md)、[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)、[`README.zh-CN.md`](../README.zh-CN.md)
@@ -792,12 +792,13 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 
 ### UI-08 / 2026-08-31 真实 Web 验收记录
 
-- **本轮提交**：`0787022 T8: harden UI acceptance paths`；仅包含 `lib/client.js` 与 `test/client-contract.test.mjs`，未夹带工作区既有 Host/README/测试修改。
-- **前置核对**：当前 3080 为官方 `dsh web` 服务；未发现同一 checkout 的 `pnpm run dev:web` watcher。旧 web profile 曾实际加载 `dsh-api-kit-0.1.0-crud-visible.tgz`，请求 bundle 含 `window.confirm`；本轮用源码重新 `pnpm pack` 生成 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz` 并在不重启服务的情况下更新 web profile 安装，刷新后 live bundle 与最新包 hash 一致，且不含 `window.confirm`。
-- **真实通过**：使用本机已安装 Chrome 通过 Playwright 连接 `http://127.0.0.1:3080`；settings.section 与 conversation.input.left 均实际挂载；1440px 与 375px 页面 `body/document scrollWidth === viewport`；最新设置页显示作用域说明、摘要、导入、连接配置和 Workbench；reduced-motion context 下无 console error/pageerror。删除确认层实际打开后首焦点进入确认输入框，连续 Tab/Shift+Tab 均在 dialog 内循环，Escape 关闭。
-- **本轮修复**：新增通用 `FOCUSABLE_SELECTOR`/`trapDialogTab`，为导入/放弃/写风险确认补齐焦点进入与 Tab trap；绑定加载使用独立 generation 并清理 stale busy；Auth Profile 加载增加 generation guard；Settings 初始加载不再把空态误报为“暂无”；Kit 使用 `aria-pressed` 补充选中语义；关键 choice/step/summary/checkbox 增加 focus-visible；picker 触控高度提高到 44px；隐藏未经证明安全的 Server URL 与 endpoint baseUrl 展示。
-- **未完成验收**：当前真实页面仍未覆盖所有导入成功/失败、编辑 dirty/write confirmation、连接配置保存拒绝、删除 Host 拒绝/写失败 retry、亮/暗/custom skin 对比度、320/480/560/680/768 多容器宽度和读屏 Accessibility Tree；这些不是已通过项。
-- **环境限制**：本轮只读刷新 3080，没有重启服务；web profile 的本地 package metadata 已恢复到原 `dsh-api-kit-0.1.0-crud-visible.tgz` 声明，但正在运行的 3080 进程已经读取最新 bundle，后续如重启会回到旧包。要持久复验最新 UI，需用户在重启前将受管 profile 指向新 tarball，或重新安装最新包。
+- **本轮提交**：`0787022 T8: harden UI acceptance paths`；随后以 `c1a0592 T8: fix operation editor fingerprint` 修复重启后真实页面发现的 `normalizeChoiceValue is not defined` 崩溃；实现提交仅包含 `lib/client.js` 与 `test/client-contract.test.mjs`，未夹带工作区既有 Host/README/测试修改。
+- **前置核对**：当前 3080 为官方 `dsh web` 服务；未发现同一 checkout 的 `pnpm run dev:web` watcher。用户重启后 3080 曾恢复加载 `dsh-api-kit-0.1.0-crud-visible.tgz`（live hash `4E6DA6D5D0DD246A0EB366CBF8EE0CC41EB8A4D7F2F414CD86402A7D05580A10`），因此本轮将 web profile 的 package.json/lockfile 持久指向 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz`，并离线安装校验。最新 tarball hash 为 `860322BE79613A4354F022E7D1DCB6BD7E1975D32D506479508D25E3954D1926`；profile lockfile 已有对应 importer、package 与 snapshot 条目。当前 3080 尚未因本轮修改重启。
+- **真实通过（修复前 bundle/不含本轮修复）**：使用本机已安装 Chrome 通过 Playwright 连接 `http://127.0.0.1:3080`；settings.section 与 conversation.input.left 均实际挂载；1440px 与 375px 页面 `body/document scrollWidth === viewport`；最新设置页显示作用域说明、摘要、导入、连接配置和 Workbench；reduced-motion context 下无 console error/pageerror。删除确认层实际打开后首焦点进入确认输入框，连续 Tab/Shift+Tab 均在 dialog 内循环，Escape 关闭。
+- **本轮修复**：新增通用 `FOCUSABLE_SELECTOR`/`trapDialogTab`，为导入/放弃/写风险确认补齐焦点进入与 Tab trap；绑定加载使用独立 generation 并清理 stale busy；Auth Profile 加载增加 generation guard；Settings 初始加载不再把空态误报为“暂无”；Kit 使用 `aria-pressed` 补充选中语义；关键 choice/step/summary/checkbox 增加 focus-visible；picker 触控高度提高到 44px；隐藏未经证明安全的 Server URL 与 endpoint baseUrl 展示；修复 `operationFormFingerprint` 在 Settings 渲染时引用尚未定义的局部函数导致的 `normalizeChoiceValue is not defined` 崩溃。修复后源码、profile 安装 bundle 和本地 tarball内容已分别校验。
+- **本轮动态验收**：在修复前 live bundle 上复现了 Operation 编辑按钮导致 settings Slot 崩溃和 console/page error；该缺陷已以 `c1a0592` 修复，但必须用户重启后再次确认。修复前还验证了坏 JSON 错误提示与原始草稿保留、输入变化后所有导入步骤变为“需重新预览”、有效 OpenAPI 预览转入“已预览”且无 page/console error；宽度 `320/375/480/560/680/768/1024/1440px` 均无横向溢出；亮/暗切换后的 `body[data-ds-dark-theme]` 状态正确且无错误。
+- **未完成验收**：当前真实页面尚未覆盖修复后 bundle 的所有导入成功/失败、编辑 dirty/write confirmation、连接配置保存拒绝、删除 Host 拒绝/写失败 retry、custom skin 对比度和读屏 Accessibility Tree；这些不是已通过项。由于用户选择暂不重启，修复后 live bundle 仍无法作为最终发布证据。
+- **环境限制**：本轮未重启或中断 3080，未启动替代服务；没有同 checkout 的 `pnpm run dev:web` watcher。DSH Web 当前运行进程仍可提供旧 live bundle；用户下一次明确重启后需要再次读取 live hash/marker 并复测 Operation editor，再继续 UI-08D/E。
 
 ### 进度总表
 
@@ -824,9 +825,9 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 
 ### 2026-08-31 / UI-08
 
-- **状态**：进行中；真实挂载和基础键盘/响应式验收通过，完整发布前矩阵未完成。
-- **下一步**：继续 UI-08D/E，优先在持久化最新 tarball 的 profile 上完成亮/暗/custom skin、导入/编辑/连接/删除失败路径与宽度矩阵；全部通过后再路径限定提交计划完成记录。
-- **遗留决策**：是否由用户重启 3080 前先把 web profile 的 dsh-api-kit 依赖稳定指向 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz`；若不调整，下一次重启会恢复旧 bundle。
+- **状态**：进行中；真实挂载、基础主题/响应式/键盘验收通过；修复后 bundle 已持久安装但尚未由用户重启加载，完整发布前矩阵未完成。
+- **下一步**：用户明确重启 3080 后，先核对 live bundle 与源码/tarball hash，复测 Operation editor 不崩溃，再继续亮/暗/custom skin、导入/编辑/连接/删除失败路径与宽度矩阵；全部通过后再路径限定提交计划完成记录。
+- **遗留决策**：用户已选择暂不重启；profile package.json/lockfile 已指向 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz`，下一次用户重启将加载该包。
 
 ### 2026-08-30 / UI-07
 
