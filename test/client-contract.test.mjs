@@ -31,6 +31,98 @@ test('T13 uses inspected theme tokens and responsive reduced-motion rules', () =
   assert.match(client, /state-success-primary/)
 })
 
+test('UI-01 presents scope relationships and conservative settings summary', () => {
+  for (const marker of ['理解 API 套件的作用域', 'API 套件关系', '服务目标', '可用环境', '配置问题', 'OpenAPI Server URL 仅用于预览']) assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  assert.match(client, /settingsSummary\(kits, operations, targets, environments, loaded\)/)
+  assert.match(client, /summaryItem\('写操作'/)
+  assert.match(client, /summaryItem\('只读操作'/)
+  assert.match(client, /summaryItem\('可用环境'/)
+  assert.match(client, /summaryItem\('配置问题'/)
+  assert.match(client, /font-variant-numeric:tabular-nums/)
+  assert.match(client, /allCollectionsKnown/)
+  assert.match(client, /summaryValue\(value\)/)
+  assert.doesNotMatch(client, /自由 URL|任意 URL.*执行/)
+})
+
+test('UI-02 explains session scope and common environment diagnostics', () => {
+  for (const marker of ['当前会话范围', '尚未激活 API 套件', 'Operation 范围', '读写风险', '共同可用环境', '当前套件没有共同可用环境', '共同环境暂不可统计', '默认禁止 Agent 调用', 'aria-describedby']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /sessionScopeSummary\(kitIds, kits, environmentId, environments\)/)
+  assert.match(client, /commonEnvironmentState\(kitIds, kits, environments\)/)
+  assert.match(client, /selectedKitNames/)
+  assert.match(client, /draftScope\.selectedKitCount/)
+  assert.match(client, /draftScope\.known && draftScope\.ids\.length === 0/)
+  assert.match(client, /aria-label': '修改当前会话的 API 套件和环境选择'/)
+  assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
+})
+
+test('UI-03 replaces key multiple selects with controlled checkbox choices', () => {
+  assert.match(client, /function CheckboxChipSelect\(props\)/)
+  assert.match(client, /normalizeChoiceValue\(props\.value\)/)
+  assert.match(client, /props\.onChange\(normalizeChoiceValue\(next\)\)/)
+  for (const marker of ['dsh-api-kit-import-tags', 'dsh-api-kit-import-kits', 'dsh-api-kit-target-environments', '已选 ', '全选当前结果', '清除选择', 'aria-controls', 'disabledReason', '已选择但当前列表未返回']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /React\.createElement\('fieldset'/)
+  assert.match(client, /type: 'checkbox'/)
+  assert.match(client, /key: item\.id/)
+  assert.match(client, /value: selectedTags, onChange: setSelectedTags/)
+  assert.match(client, /defaultKitIds: importMode === 'existing' \? kitIds : \[\]/)
+  assert.match(client, /value: targetForm\.environmentIds, onChange: \(environmentIds\) => (?:setTargetForm|\{)/)
+  assert.match(client, /Service Target 至少要绑定一个 Environment/)
+  assert.doesNotMatch(client, /selectedOptions/)
+  assert.doesNotMatch(client, /select\\s*\\[multiple\\]/)
+})
+
+test('UI-04 presents the OpenAPI import as an inspect-config-confirm flow', () => {
+  for (const marker of ['activeStep', 'confirming', '检查文档', '配置导入', '确认变更', 'aria-current', '继续配置导入', '查看变更确认', 'dsh-api-kit-import-review', 'dsh-api-kit-import-confirmation', 'role: \'dialog\'', 'aria-modal', 'confirmationDialogRef', 'Escape', '全部保留本地', '全部覆盖', '全部跳过', 'Server 候选（仅显示，不是执行目标）', '一次性写入本地 Registry', '默认禁止 Agent 调用']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /setActiveStep\('configure'\)/)
+  assert.match(client, /setActiveStep\('confirm'\)/)
+  assert.match(client, /previewStale/)
+  assert.match(client, /const canConfigure/)
+  assert.match(client, /const canConfirm/)
+  assert.match(client, /confirmOpenApiImport/)
+  assert.match(client, /includedSourceKeys: selectedOperations\.map/)
+  assert.match(client, /conflictDecisions/)
+  assert.doesNotMatch(client, /window\.confirm\('确认按当前筛选、绑定和冲突决策导入/)
+})
+
+test('UI-05 presents vertical connection configuration and endpoint disclosure', () => {
+  for (const marker of ['dsh-api-kit-connection-stack', '先完成环境，再在下方 Service Target', 'Service Target 依赖上方已建立的 Environment', 'Endpoint Disclosure', 'endpointDomId', 'expandedEndpointIds', 'aria-expanded', 'aria-controls', 'hidden: !expanded', '高级网络策略', 'Endpoint baseUrl', '超时毫秒', '允许访问的 Host', '允许访问的私网网段', '允许内网地址', '最大响应字节', '最大重定向次数', '允许特权端口', 'dsh-api-kit-target-auth-profiles', 'targetForm.authProfileIds', 'listAuthProfiles', '认证配置列表加载失败', '当前版本没有可用的安全连接测试 RPC', '不会直接发起网络请求']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /targetForm\.environmentIds\.map\(endpointFields\)/)
+  assert.match(client, /defaultEnvironmentId.*targetForm\.environmentIds\.map/)
+  assert.match(client, /authProfileIds: Array\.isArray\(targetForm\.authProfileIds\)/)
+  assert.match(client, /createServiceTarget/)
+  assert.match(client, /updateServiceTarget/)
+  assert.match(client, /endpoints/)
+  assert.doesNotMatch(client, /自由 URL.*执行/)
+  assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
+})
+
+test('UI-07 provides safe deletion confirmation and documents unavailable connection testing', () => {
+  assert.doesNotMatch(client, /window\.confirm/)
+  for (const marker of ['deleteImpact', 'requestDelete', 'confirmDelete', 'cancelDelete', 'deleteRequest', 'deleteConfirmationInput', 'deleteDialogError', 'deleteRequestRef', 'deleteDialogRef', 'ENVIRONMENT_IN_USE', 'TARGET_IN_USE', 'OPERATION_IN_USE', '引用关系将在 Host 保存时校验', '输入“删除”以确认', '当前配置仍保留', 'dsh-api-kit-delete-confirmation', 'role: \'dialog\'', 'aria-modal', 'aria-labelledby', 'aria-describedby', 'aria-busy', 'Escape', '当前版本没有可用的安全连接测试 RPC', '不会直接发起网络请求', 'deleteEnvironment', 'deleteServiceTarget', 'deleteKit', 'deleteOperation']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.doesNotMatch(client, /testConnection|probeTarget|healthCheck/)
+  assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
+})
+
+test('UI-06 groups Operation editing and protects dirty/write-risk saves', () => {
+  for (const marker of ['operationFormFingerprint', 'formSnapshot', 'formDirty', 'pendingFormAction', 'discardDialogOpen', 'writeConfirming', 'requestFormAction', 'discardAndContinue', '放弃未保存修改', '保留草稿', '放弃修改', '基本信息', '请求定义', '响应定义', 'Agent 权限与安全', 'dsh-api-kit-operation-editor', 'dsh-api-kit-operation-group', 'dsh-api-kit-operation-dirty', '尚有未保存修改', 'Parameters JSON', 'Request Body JSON', 'Responses JSON', 'ID', 'disabled:', '允许 Agent 发现和调用', '允许写操作', '调用前需要确认', 'dsh-api-kit-operation-write-risk', '真实业务数据', '尚未开启调用前人工确认', 'requestOperationSave', '确认保存写操作策略', 'API Kit：', 'Service Target：', '不代表已经执行 API 请求', '下次 Agent 调用时生效', 'createOperation', 'updateOperation', 'aria-modal', 'aria-busy', 'Escape']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /form\.policy\.allowWrite/)
+  assert.match(client, /form\.policy\.requiresConfirmation/)
+  assert.match(client, /requestFormAction\(\(\) => setSelectedKit/)
+  assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
+})
+
 test('T14 aligns the session picker and action buttons with DSH controls', () => {
   assert.match(client, /dsh-api-kit-picker-button\{height:28px;min-height:28px/)
   assert.match(client, /background:var\(--dsw-alias-bg-input/)
