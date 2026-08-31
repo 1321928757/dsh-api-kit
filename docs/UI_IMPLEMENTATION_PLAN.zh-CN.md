@@ -3,9 +3,9 @@
 - **项目**：dsh-api-kit
 - **目标**：将当前“功能平铺”的设置页和会话选择器，调整为作用域清晰、风险可见、流程分阶段、可在真实 DSH Web 中验证的 API 套件工作台。
 - **适用版本**：当前 `0.1.0` profile bundle；客户端入口为 [`../lib/client.js`](../lib/client.js)。
-- **文档状态**：UI-07 已完成，下一步为 UI-08 真实 DSH Web 验收；可跨会话持续推进。
+- **文档状态**：UI-08 进行中；已完成真实挂载与部分视觉/键盘验收，仍需发布前完整失败路径和主题矩阵。
 - **创建日期**：2026-08-30
-- **当前 UI 基线**：T13 客户端合同、主题/响应式/键盘基础已完成；T14 Host 写操作、确认意图和 OAuth 能力已完成；真实浏览器 UI smoke 尚未完成。
+- **当前 UI 基线**：T13 客户端合同、主题/响应式/键盘基础已完成；T14 Host 写操作、确认意图和 OAuth 能力已完成；UI-08 已完成最新 bundle 的真实 3080 挂载、桌面/窄屏无横溢出、删除 dialog 键盘 trap 和无 console/page error 验收，完整主题/失败路径矩阵仍待完成。
 - **相关文档**：[`IMPLEMENTATION_PLAN.zh-CN.md`](./IMPLEMENTATION_PLAN.zh-CN.md)、[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)、[`README.zh-CN.md`](../README.zh-CN.md)
 
 > 本文档是 UI 调整实施计划，不等同于已完成的代码变更。除非任务明确要求，先按子任务逐项实施、测试并更新状态，不要一次性重写整个客户端。
@@ -790,6 +790,15 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 
 ## 12. 当前进度与交接记录
 
+### UI-08 / 2026-08-31 真实 Web 验收记录
+
+- **本轮提交**：`0787022 T8: harden UI acceptance paths`；仅包含 `lib/client.js` 与 `test/client-contract.test.mjs`，未夹带工作区既有 Host/README/测试修改。
+- **前置核对**：当前 3080 为官方 `dsh web` 服务；未发现同一 checkout 的 `pnpm run dev:web` watcher。旧 web profile 曾实际加载 `dsh-api-kit-0.1.0-crud-visible.tgz`，请求 bundle 含 `window.confirm`；本轮用源码重新 `pnpm pack` 生成 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz` 并在不重启服务的情况下更新 web profile 安装，刷新后 live bundle 与最新包 hash 一致，且不含 `window.confirm`。
+- **真实通过**：使用本机已安装 Chrome 通过 Playwright 连接 `http://127.0.0.1:3080`；settings.section 与 conversation.input.left 均实际挂载；1440px 与 375px 页面 `body/document scrollWidth === viewport`；最新设置页显示作用域说明、摘要、导入、连接配置和 Workbench；reduced-motion context 下无 console error/pageerror。删除确认层实际打开后首焦点进入确认输入框，连续 Tab/Shift+Tab 均在 dialog 内循环，Escape 关闭。
+- **本轮修复**：新增通用 `FOCUSABLE_SELECTOR`/`trapDialogTab`，为导入/放弃/写风险确认补齐焦点进入与 Tab trap；绑定加载使用独立 generation 并清理 stale busy；Auth Profile 加载增加 generation guard；Settings 初始加载不再把空态误报为“暂无”；Kit 使用 `aria-pressed` 补充选中语义；关键 choice/step/summary/checkbox 增加 focus-visible；picker 触控高度提高到 44px；隐藏未经证明安全的 Server URL 与 endpoint baseUrl 展示。
+- **未完成验收**：当前真实页面仍未覆盖所有导入成功/失败、编辑 dirty/write confirmation、连接配置保存拒绝、删除 Host 拒绝/写失败 retry、亮/暗/custom skin 对比度、320/480/560/680/768 多容器宽度和读屏 Accessibility Tree；这些不是已通过项。
+- **环境限制**：本轮只读刷新 3080，没有重启服务；web profile 的本地 package metadata 已恢复到原 `dsh-api-kit-0.1.0-crud-visible.tgz` 声明，但正在运行的 3080 进程已经读取最新 bundle，后续如重启会回到旧包。要持久复验最新 UI，需用户在重启前将受管 profile 指向新 tarball，或重新安装最新包。
+
 ### 进度总表
 
 | ID | 任务 | 状态 | 当前结果 | 下一步 |
@@ -802,7 +811,7 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 | UI-05 | 连接配置纵向结构 | 已完成 | 已将连接区改为 Environment → Service Target 纵向结构；Target 列表增加 Endpoint/Operation 完整度摘要，目标级认证使用安全视图选择，Endpoint 按环境 Disclosure 并将网络策略折叠到“高级网络策略”；保留既有 CRUD payload 和 Host 校验；真实浏览器 smoke 仍未完成 | 进入 UI-06，重组 Operation 编辑器并加入 dirty/写风险确认 |
 | UI-06 | Operation 编辑与写风险 | 已完成 | 已将编辑器拆分为基本信息、请求定义、响应定义、Agent 权限与安全四组；保留 JSON 高级模式，加入表单快照/dirty 状态、离开保护、写操作风险提示和本地保存确认层；既有 Operation ID 只读，Host/RPC 写门禁不变；真实浏览器 smoke 仍未完成 | 进入 UI-07，确认连接测试 RPC 契约并完善连接测试/删除确认层 |
 | UI-07 | 连接测试/删除确认 | 已完成 | 已确认当前没有安全连接测试 RPC，因此仅更新不可用说明；删除入口已改为基于安全视图影响摘要的统一可访问确认层，支持未知引用保护、输入“删除”、Escape/Tab/焦点恢复、失败保留与重试；真实浏览器 smoke 仍未完成 | 进入 UI-08；若未来 Host 提供安全测试 RPC，再单独评审 UI-07-B |
-| UI-08 | 视觉/无障碍/真实 Web 验收 | 未开始 | T13 合同与隔离安装已有记录；真实浏览器 smoke 未完成 | 在所有纳入版本的 UI 任务完成后执行 |
+| UI-08 | 视觉/无障碍/真实 Web 验收 | 进行中 | 已修复并提交 UI-08 焦点 trap、独立请求 generation、初始 loading、选中语义和敏感 URL 展示问题；用最新 tarball 刷新 web profile 后，真实 3080 已验证两个 Slot、1440/375px 无横向溢出、删除 dialog Tab/Shift+Tab/Escape、reduced-motion 和 0 console/pageerror。完整亮暗/custom skin、导入/编辑/连接失败路径和最终验收记录仍待补齐 | 继续 UI-08D/E；需覆盖完整主题与失败路径矩阵后才能标记完成 |
 | UI-09 | P2 体验增强 | 延期 | 不阻塞 P0/P1 | 逐项评估数据和安全边界 |
 
 ### 2026-08-30 / UI 计划建立
@@ -812,6 +821,12 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 - **安全边界**：本计划不改变 Host/RPC 的安全语义；OpenAPI Server 继续 display-only；写操作继续由 T14 Host 策略和人工确认门最终决定；Client 不持有 secret、token、任意 URL 或 live Cordis 对象。
 - **本轮未实现**：未修改插件源码、未执行真实浏览器 UI smoke；本文件只作为后续实现和交接基线。
 - **下一步建议**：UI-00 已完成；UI-01 已完成后，下一步进入 UI-02；后续实现仍需以当前运行时 Inspect 为准。
+
+### 2026-08-31 / UI-08
+
+- **状态**：进行中；真实挂载和基础键盘/响应式验收通过，完整发布前矩阵未完成。
+- **下一步**：继续 UI-08D/E，优先在持久化最新 tarball 的 profile 上完成亮/暗/custom skin、导入/编辑/连接/删除失败路径与宽度矩阵；全部通过后再路径限定提交计划完成记录。
+- **遗留决策**：是否由用户重启 3080 前先把 web profile 的 dsh-api-kit 依赖稳定指向 `C:\Users\48444\.dsh-tmp\dsh-api-kit-0.1.0.tgz`；若不调整，下一次重启会恢复旧 bundle。
 
 ### 2026-08-30 / UI-07
 
