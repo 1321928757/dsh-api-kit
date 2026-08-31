@@ -27,7 +27,7 @@ test('T13 uses inspected theme tokens and responsive reduced-motion rules', () =
   assert.match(client, /prefers-reduced-motion:reduce/)
   assert.match(client, /100dvh/)
   assert.match(client, /--dsw-alias-label-tertiary/)
-  assert.match(client, /overflow-x:clip/)
+  assert.match(client, /overflow-x:(?:clip|hidden)/)
   assert.match(client, /state-success-primary/)
 })
 
@@ -124,7 +124,7 @@ test('UI-06 groups Operation editing and protects dirty/write-risk saves', () =>
 })
 
 test('T14 aligns the session picker and action buttons with DSH controls', () => {
-  assert.match(client, /dsh-api-kit-picker-button\{height:28px;min-height:28px/)
+  assert.match(client, /dsh-api-kit-picker-button\{height:auto;min-height:44px/)
   assert.match(client, /background:var\(--dsw-alias-bg-input/)
   assert.match(client, /button-primary-fill/)
   assert.match(client, /button-primary-hover/)
@@ -146,6 +146,21 @@ test('T13 provides keyboard focus and semantic status/error feedback', () => {
   assert.match(client, /returnFocusRef/)
   assert.match(client, /querySelectorAll\('button:not\(\[disabled\]\)/)
   assert.match(client, /min-height:44px/)
+})
+
+test('UI-08 preserves dialog focus, independent request generations, loading state, and selected semantics', () => {
+  assert.match(client, /const FOCUSABLE_SELECTOR/)
+  assert.match(client, /trapDialogTab\(event, activeDialogRef\)/)
+  assert.match(client, /const bindingRequestRef = React\.useRef\(0\)/)
+  assert.match(client, /requestId !== bindingRequestRef\.current/)
+  assert.match(client, /bindingBusyRef\.current = false; setBindingBusy\(false\)/)
+  assert.match(client, /const authRequestRef = React\.useRef\(0\)/)
+  assert.match(client, /const \[hasLoadedOnce, setHasLoadedOnce\]/)
+  assert.match(client, /setHasLoadedOnce\(true\)/)
+  assert.match(client, /'aria-pressed': selectedKit === kit\.id/)
+  assert.match(client, /\.dsh-api-kit-choice-action:focus-visible/)
+  assert.match(client, /\.dsh-api-kit-operation-group>summary:focus-visible/)
+  assert.match(client, /overflow-x:hidden/)
 })
 
 test('T13 guards stale async responses and preserves actionable JSON errors', () => {
