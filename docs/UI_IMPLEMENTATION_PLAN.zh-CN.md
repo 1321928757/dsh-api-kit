@@ -6,6 +6,7 @@
 - **文档状态**：UI-08 已完成；已完成真实挂载、主题、响应式、无障碍、键盘和主要失败路径验收。未提供自定义 skin 的当前 DSH Web 环境已明确记录为“不适用”，不以不可用环境冒充通过。
 - **创建日期**：2026-08-30
 - **当前 UI 基线**：T13 客户端合同、主题/响应式/键盘基础已完成；T14 Host 写操作、确认意图和 OAuth 能力已完成；UI-08 已完成最新 bundle 的真实 3080 挂载、修复后 Operation 编辑器 smoke、亮/暗主题、320–1440px 全宽度、Accessibility Tree、focus-visible、reduced-motion 和失败路径验收。
+- **最新修复**：修复 Service Target Endpoint 的 Host/CIDR 文本框在已有数组值时被渲染为空、导致可选中但无法输入的问题；非数组兼容值现在也会安全显示为字符串，并保留原有按换行/逗号解析和 Host 最终校验。
 - **相关文档**：[`IMPLEMENTATION_PLAN.zh-CN.md`](./IMPLEMENTATION_PLAN.zh-CN.md)、[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)、[`README.zh-CN.md`](../README.zh-CN.md)
 
 > 本文档是 UI 调整实施计划，不等同于已完成的代码变更。除非任务明确要求，先按子任务逐项实施、测试并更新状态，不要一次性重写整个客户端。
@@ -804,6 +805,14 @@ UI-04 + UI-06 + UI-08 ──→ UI-09 P2 增强
 - **局部错误隔离**：将 `listAuthProfiles` 拦截为 HTTP 503 后，settings Slot 仍渲染，出现“部分绑定列表暂不可用”和“重试绑定列表”，其它加载区域保持可见；无 page error。模拟 HTTP 503 会被浏览器 Network console 记录为资源错误，这是测试拦截器的预期信号，不是插件未捕获的 page error。
 - **静态与回归**：`node --check lib\\client.js`、`node --test test\\client-contract.test.mjs`（13/13）、`pnpm test`（172/172）、`pnpm run check`、`pnpm pack --dry-run`、`git diff --check` 全部通过。未修改或提交工作区中既有 Host/README/测试改动。
 - **环境说明**：未发现同 checkout 的 `pnpm run dev:web` watcher；真实验收使用当前官方 `dsh web` 的 `http://127.0.0.1:3080`，未启动替代服务器。大字号/浏览器缩放无法通过当前自动化环境稳定改变系统字体倍率，代码已使用继承字体、换行边界和容器降列；该项记录为“代码规则已具备，未做 OS 级倍率量测”。
+
+### 2026-09-01 / Service Target Host/CIDR 输入修复
+
+- **问题**：真实配置 Service Target 时，Endpoint 高级网络策略中的“允许访问的 Host（每行一个）”和“允许访问的私网网段（CIDR）”可以获得选区但键入内容立即消失。
+- **根因**：`endpointValue()` 只把 `allowedHosts`/`allowedCidrs` 的数组值转换为多行文本；用户输入后 `patchTargetEndpoint()` 暂时写入字符串，下一次 React render 又因非数组回退为空字符串，受控 textarea 因此无法输入。
+- **修复**：非数组值改用 `safeString(endpoint[key])` 返回，输入草稿在 render 之间保持；保存时仍按原有换行/逗号分隔转换为字符串数组，并由 Host 执行最终校验。
+- **验证**：真实 `http://127.0.0.1:3080` 中两个 textarea 均为 `disabled=false`、`readOnly=false`；输入 `api.example.com\napi.internal.example` 与 `10.0.0.0/8\n192.168.0.0/16` 后内容保持；点击“保存 Service Target”成功发出原有 `updateServiceTarget`，wire payload 为对应字符串数组；刷新后读取到已保存值；无 page error/console error。
+- **构建/安装**：源码、profile 安装文件与 live bundle 均为 `176181` bytes、SHA-256 `A68A163346F83F92A1D881004F1D8FEEB0B994F77FF8EA37F70C6517A7777547`；修复包 `dsh-api-kit-0.1.0-host-cidr-fix.tgz` SHA-256 `B57234078AAF52098BBDCE0AA97A05A9EB8E8F08CC77A8B93C9084169DC7B594`；profile 的 frozen offline install 通过。
 
 ### 进度总表
 

@@ -96,6 +96,9 @@ test('UI-05 presents vertical connection configuration and endpoint disclosure',
   }
   assert.match(client, /targetForm\.environmentIds\.map\(endpointFields\)/)
   assert.match(client, /defaultEnvironmentId.*targetForm\.environmentIds\.map/)
+  assert.match(client, /endpointValue = \(endpoint, key\).*safeString\(endpoint\[key\]\)/)
+  assert.match(client, /patchTargetEndpoint\(environmentId, 'allowedHosts', value\)/)
+  assert.match(client, /patchTargetEndpoint\(environmentId, 'allowedCidrs', value\)/)
   assert.match(client, /authProfileIds: Array\.isArray\(targetForm\.authProfileIds\)/)
   assert.match(client, /createServiceTarget/)
   assert.match(client, /updateServiceTarget/)
