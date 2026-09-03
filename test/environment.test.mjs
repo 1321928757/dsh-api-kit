@@ -11,7 +11,7 @@ function rejectsCode(task, code) {
   return assert.rejects?.(task, (error) => error.code === code)
 }
 
-test('environment accepts HTTP/HTTPS, normalizes hosts and defaults production Agent access off', () => {
+test('environment keeps legacy URL compatibility while safe views expose only metadata', () => {
   const development = validateEnvironmentInput({
     id: 'dev',
     name: 'Development',
@@ -28,15 +28,14 @@ test('environment accepts HTTP/HTTPS, normalizes hosts and defaults production A
   assert.equal(production.agentEnabled, false)
   const productionView = safeEnvironmentView(production)
   assert.equal(productionView.id, 'prod')
-  assert.equal(productionView.baseUrl, 'https://api.example.test')
+  assert.equal('baseUrl' in productionView, false)
   assert.equal(productionView.production, true)
   assert.equal(productionView.agentEnabled, false)
-  assert.equal(productionView.allowedHosts[0], 'api.example.test')
 })
 
-test('environment rejects empty, unsafe, credential-bearing, query-bearing and privileged URLs', () => {
+test('environment rejects unsafe, credential-bearing, query-bearing and privileged URLs while allowing metadata-only records', () => {
+  assert.equal(validateEnvironmentInput({ id: 'metadata-only', name: 'Metadata' }).baseUrl, '')
   for (const [baseUrl, code] of [
-    ['', 'BASE_URL_REQUIRED'],
     ['file:///etc/passwd', 'BASE_URL_PROTOCOL'],
     ['javascript:alert(1)', 'BASE_URL_PROTOCOL'],
     ['https://user:pass@example.test', 'BASE_URL_CREDENTIALS'],

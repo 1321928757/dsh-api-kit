@@ -9,13 +9,14 @@
 - API 定义和非敏感配置保存在本机 Registry；真实凭据只由 Host 按次解析。
 - `api_call` 只接受稳定 `operationId` 与已声明参数；GET/HEAD 直接执行，写方法只生成确认意图且不联网。
 - `api_write_prepare` 只准备受策略允许的 POST/PUT/PATCH/DELETE 请求并生成短期、单次、绑定当前 Session/环境/Registry 的确认 token；`api_write_execute` 只有在 Host 确认状态为 approved 时才会联网。
-- 目标只来自登记的 Environment `baseUrl` 与 Operation path，不接受模型传入 URL、host、sessionId、代理或重定向策略。
-- Environment 的 host 必须在 `allowedHosts` 中；每次调用对 DNS 返回的全部地址做校验，任一地址为 loopback、link-local、metadata、保留、文档测试网段、IPv4-mapped 高风险地址则拒绝。
-- RFC1918、IPv6 ULA 和 CGNAT 私网地址还必须同时满足 `allowPrivateNetwork: true` 与匹配的 `allowedCidrs`；仅设置 hostname 白名单不能放行私网。
+- 目标只来自登记的 Service Target endpoint `baseUrl` 与 Operation path，不接受模型传入 URL、host、sessionId、代理或重定向策略。
+- 每个 Service Target 可为每个 Environment 配置独立 endpoint；同一 `demo` 环境中的订单和车辆服务可以使用不同根地址。Environment 只保存环境元数据，不再独占 API 根地址。
+- endpoint 的 host 必须在该 endpoint 的 `allowedHosts` 中；每次调用对 DNS 返回的全部地址做校验，任一地址为 loopback、link-local、metadata、保留、文档测试网段、IPv4-mapped 高风险地址则拒绝。
+- RFC1918、IPv6 ULA 和 CGNAT 私网地址还必须同时满足 endpoint 的 `allowPrivateNetwork: true` 与匹配的 `allowedCidrs`；仅设置 hostname 白名单不能放行私网。
 - 请求连接固定到已校验的 IP；HTTPS 仍使用登记 hostname 作为 TLS SNI 和 Host，避免 DNS rebinding。生产 pinned transport 不使用代理、自动重试或自动重定向。
 - 301/302/303/307/308 只返回安全错误 `REDIRECT_NOT_ALLOWED`，不读取或返回 `Location`。
 - JSON 成功和错误响应在返回前按默认及 Operation `policy.redactKeys` 递归脱敏；文本、XML、JavaScript、未知类型和非 2xx 响应也执行保守敏感值脱敏，再执行深度、数组、字符串、对象 key 和字节治理；不返回响应 Header。
-- OAuth2 仅支持 HTTPS 固定 token endpoint、Client Credentials、`client_secret_basic`/`client_secret_post`；secret 只从 Host credentials 按次解析，token 缓存按 Profile/Environment 隔离并拒绝自动重定向。
+- OAuth2 仅支持 HTTPS 固定 token endpoint、Client Credentials、`client_secret_basic`/`client_secret_post`；secret 只从 Host credentials 按次解析，token 缓存按 Profile/Service Target/Environment/endpoint 隔离并拒绝自动重定向。
 - 每次 `api_call` 的实际调用和策略拒绝都写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`。审计按白名单字段写入，默认懒清理 14 天前文件；写失败不影响业务结果，并仅保留 Host 内部诊断。
 
 ## T13 UI 质量与可用性
@@ -30,7 +31,7 @@
 ## 会话级套件选择
 
 - 输入栏 `conversation.input.left` 的“API 套件”入口使用独立槽位 ID `dsh-api-kit`，排序为 `93`。
-- 当前会话可以多选 API Kit，并选择一个共同 Environment；选择只保存在 Host 运行时的 `sessionId → { activeKitIds, environmentId }` 内存映射。
+- 当前会话可以多选 API Kit，并选择一个共同的逻辑 Environment（如 `demo`）；选择只保存在 Host 运行时的 `sessionId → { activeKitIds, environmentId }` 内存映射。每个 Operation 执行时，会从其 Service Target 读取所选 Environment 对应的独立 endpoint。
 - Host 每次读取和工具调用都会重新校验 Kit/Operation/Environment 的启用状态、Agent 权限和环境兼容性。
 - 选择器及 Agent 工具不展示 base URL、host 白名单、凭据引用或 secret。
 
@@ -51,10 +52,23 @@
 
 ## OpenAPI JSON 导入与确认
 
-T12 在设置页提供“导入 OpenAPI JSON”流程：粘贴 JSON → 读取并预览 → 选择 Tag、已登记 Service Target、Environment、Auth Profile 和一个或多个 Kit → 逐项处理冲突 → 二次确认并原子写入 Registry。Host 在确认时会重新解析文档和当前 Registry，不信任浏览器提交的候选字段；任何校验、并发或持久化失败都会使整个批次不写入。
+T12 在设置页提供“API Kit 工作台”：顶部导入 OpenAPI JSON，粘贴后先“校验并预览”，确认格式、版本、Servers（仅展示）、Paths、Operations 和新增/更新/跳过/冲突统计；随后可以选择“新建套件”并填写名称，或添加到现有 Kit，再绑定 Service Target、Environment、Auth Profile，处理冲突并点击“导入到套件”。创建空 Kit 是独立的次级入口；没有 Kit 时只显示一个完整空状态。整个确认过程由 Host 原子写入 Registry，预览失效、绑定失败或持久化失败都不会产生部分写入。
+
+### 连接配置：Environment 与 Service Target
+
+设置页的“连接配置”区域现在可以直接创建和维护这两类对象：
+
+> 迁移说明：旧版本把 `baseUrl` 和网络策略存放在 Environment。读取旧 Registry 时会为每个已绑定 Service Target 生成独立 endpoint；新建或编辑配置应在 Service Target 的 Environment Endpoint 中维护 URL。旧 Environment 字段只作为兼容读取，不再作为新请求的首选路由。
+
+1. **Environment**：只保存环境阶段元数据，例如 `demo`、`dev`、生产标记和 Agent 可用性，不保存全局 API 根地址。
+2. **Service Target**：表示一个逻辑业务服务，并按 Environment 保存 endpoint 映射。订单服务可以配置 `demo → https://demo-order.example.com`，车辆服务可以配置 `demo → https://demo-vehicle.example.com`。每个 endpoint 独立保存 `baseUrl`、Host/CIDR 白名单、私网开关和请求限制，并可关联认证配置。
+3. 推荐顺序：先点击“添加 Environment”填写 ID 和名称，再点击“添加 Service Target”，选择一个或多个 Environment，并在每个 Environment Endpoint 中填写该服务自己的 API 根地址。创建完成后，OpenAPI 导入里的 Service Target 下拉框会出现该目标。
+4. 如果某个 endpoint 位于内网，先在该 endpoint 勾选“允许内网地址”，再在它的“允许访问的私网网段（CIDR）”中每行填写一个网段。只允许单个地址时填写 `/32`，例如 `172.31.33.216/32`。
+
+OpenAPI 文档中的 `servers[].url` 只作为预览候选展示，不会自动创建或信任执行目标；这样可以避免把文档中的地址直接变成可调用网络目标。
 
 - `previewOpenApiImport(args)` 返回有界预览、文档 fingerprint、Registry fingerprint、Tag/服务统计和 transactionId；不保存完整原文。
-- `confirmOpenApiImport(args)` 必须携带原始 JSON、transactionId、预览指纹和明确绑定；只允许使用现有 Target/Environment/Auth Profile/Kit。重复成功确认使用相同 transactionId 和选择时幂等返回。
+- `confirmOpenApiImport(args)` 必须携带原始 JSON、transactionId、预览指纹和明确绑定；既支持现有 Kit，也支持通过 `selection.newKit.name` 在同一事务中创建并关联新 Kit。重复成功确认使用相同 transactionId 和选择时幂等返回。
 - Tag 筛选只影响本次 sourceKey 选择；冲突支持 `overwrite`、`keep-local`、`skip`。写操作保持不可由 Agent 调用的安全默认策略。
 - Server URL 仍为 display-only，不能自动创建 Environment；导入归档默认关闭，归档失败不影响 Registry 提交结果。
 

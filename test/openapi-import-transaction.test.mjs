@@ -115,6 +115,28 @@ test('security alternatives require explicit future mapping instead of guessing 
   await assert.rejects(importer.confirmOpenApiImport(confirmArgs(preview, document, { sourceId: 'auth' })), (error) => error.code === 'IMPORT_SECURITY_MAPPING_UNSUPPORTED')
 })
 
+test('newKit is created and linked atomically during import', async () => {
+  const { store, config } = await setup()
+  const document = await fixture('openapi-3-basic.json')
+  const importer = createOpenApiImportTransactionService({ store, clock: CLOCK })
+  const preview = importer.previewOpenApiImport(document, { sourceId: 'new-kit' })
+  const result = await importer.confirmOpenApiImport({ ...confirmArgs(preview, document), defaultKitIds: [], selection: { newKit: { name: 'Pet Catalog' }, defaultServiceTargetId: 'backend', defaultKitIds: [], includedSourceKeys: preview.operations.map((item) => item.sourceKey), assignments: Object.fromEntries(preview.operations.map((item) => [item.sourceKey, { serviceTargetId: 'backend', kitIds: [] }])) } })
+  assert.equal(result.applied.created, 1)
+  assert.equal(result.bindings.createdKitId, 'pet-catalog')
+  assert.equal(config.getSnapshot().kits.length, 2)
+  assert.deepEqual(config.getSnapshot().kits.find((kit) => kit.id === 'pet-catalog').operationIds, ['getpet'])
+})
+
+test('newKit duplicate rejects without a partial Registry write', async () => {
+  const { store, config } = await setup()
+  const document = await fixture('openapi-3-basic.json')
+  const importer = createOpenApiImportTransactionService({ store, clock: CLOCK })
+  const preview = importer.previewOpenApiImport(document, { sourceId: 'new-kit-duplicate' })
+  const before = JSON.stringify(config.getSnapshot())
+  await assert.rejects(importer.confirmOpenApiImport({ ...confirmArgs(preview, document), defaultKitIds: [], selection: { newKit: { name: 'Pets' }, defaultServiceTargetId: 'backend', defaultKitIds: [] } }), (error) => error.code === 'DUPLICATE_KIT_ID')
+  assert.equal(JSON.stringify(config.getSnapshot()), before)
+})
+
 test('input and registry stay unchanged when confirmation validation fails', async () => {
   const { store, config } = await setup()
   const document = await fixture('openapi-3-basic.json')

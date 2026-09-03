@@ -9,13 +9,13 @@ T14 is complete on top of the T13 settings page and session Kit picker. It adds 
 - Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
 - `api_call` accepts only a stable `operationId` and declared parameters; GET/HEAD execute directly while write methods only produce a confirmation intent and never send HTTP.
 - `api_write_prepare` creates a short-lived, single-use confirmation intent without network access. `api_write_execute` sends a write only after a Host-owned approved intent is presented with the same Session, Environment, target, request, and Registry bindings.
-- The target is built only from a registered Environment `baseUrl` and Operation path. The model cannot provide a URL, host, session ID, proxy, or redirect policy.
-- The Environment hostname must be allowlisted. Every DNS answer is checked; loopback, link-local, metadata, reserved/documentation addresses, and high-risk IPv4-mapped IPv6 addresses are rejected.
+- The target is built only from a registered Service Target endpoint `baseUrl` for the selected Environment and the Operation path. The model cannot provide a URL, host, session ID, proxy, or redirect policy.
+- Each Service Target may map every logical Environment to a different endpoint, so order and vehicle services can use different `demo` roots while the session still selects one `demo` Environment. Endpoint hostnames must be allowlisted. Every DNS answer is checked; loopback, link-local, metadata, reserved/documentation addresses, and high-risk IPv4-mapped IPv6 addresses are rejected.
 - RFC1918, IPv6 ULA, and CGNAT addresses additionally require `allowPrivateNetwork: true` and a matching `allowedCidrs` entry. A hostname allowlist alone never enables private access.
 - The pinned transport connects to a checked IP while retaining the registered hostname for HTTPS SNI and the HTTP Host header. Production requests do not use a proxy, implicit retry, or automatic redirect.
 - 301/302/303/307/308 return the safe `REDIRECT_NOT_ALLOWED` error without exposing or following `Location`.
 - JSON success and error bodies are recursively redacted using defaults plus Operation `policy.redactKeys`; text, XML, JavaScript, unknown content types, and non-2xx bodies also receive conservative sensitive-value redaction before depth, array, string, key, and byte governance. Response headers are not returned.
-- OAuth2 supports only HTTPS fixed token endpoints, Client Credentials, and `client_secret_basic`/`client_secret_post`. Secrets are resolved per request on the Host; token caches are isolated by Profile and Environment, with redirects denied.
+- OAuth2 supports only HTTPS fixed token endpoints, Client Credentials, and `client_secret_basic`/`client_secret_post`. Secrets are resolved per request on the Host; token caches are isolated by Profile, Service Target, Environment, and effective endpoint policy, with redirects denied.
 - Every `api_call` policy rejection and network attempt is written to `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`. Audit records use an allowlist, lazily retain 14 days by default, and never contain credentials, headers, URL, body, stack, or cause. Audit failures do not affect the business result.
 
 ## T13 UI quality and usability
@@ -30,7 +30,7 @@ T14 is complete on top of the T13 settings page and session Kit picker. It adds 
 ## Session-scoped Kit selection
 
 - The `conversation.input.left` API Kit control uses slot ID `dsh-api-kit` and order `93`.
-- A session can activate multiple Kits and one common Environment. Selection is held in a Host-only in-memory map keyed by the authoritative session ID.
+- A session can activate multiple Kits and one common logical Environment (for example, `demo`). Each Operation then resolves its own Service Target endpoint for that Environment. Selection is held in a Host-only in-memory map keyed by the authoritative session ID.
 - Every read and tool call revalidates Kit/Operation/Environment state, Agent permissions, and environment compatibility.
 - The selector and Agent tools do not expose base URLs, host allowlists, credential references, or secrets.
 
@@ -51,7 +51,7 @@ For every model-step prompt assembly, the Host provider re-reads the current ses
 
 ## OpenAPI JSON import and confirmation
 
-T12 adds a settings workflow: paste JSON → preview → choose Tags, registered Service Target, Environment, Auth Profile and one or more Kits → decide conflicts → explicit confirmation and one atomic Registry write. The Host re-parses the document and current Registry at confirmation and never trusts browser-supplied candidate fields; validation, concurrency, or persistence failure leaves the whole batch uncommitted.
+T12 adds a settings workflow: paste JSON → preview → choose Tags, registered Service Target, Environment, Auth Profile and one or more Kits → decide conflicts → explicit confirmation and one atomic Registry write. The selected Environment is a logical stage; the chosen Service Target supplies its stage-specific endpoint. The Host re-parses the document and current Registry at confirmation and never trusts browser-supplied candidate fields; validation, concurrency, or persistence failure leaves the whole batch uncommitted.
 
 - `previewOpenApiImport(args)` returns bounded preview data, document and Registry fingerprints, Tag/service counts, and a transactionId; it never stores the full source document.
 - `confirmOpenApiImport(args)` requires the original JSON, transactionId, preview fingerprints, and explicit bindings. Only existing Targets/Environments/Auth Profiles/Kits are accepted. Repeating a successful confirmation with the same transactionId and selection is idempotent.

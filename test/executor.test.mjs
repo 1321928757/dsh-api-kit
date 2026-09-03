@@ -77,6 +77,18 @@ test('fixed base URL and path parameters are encoded without accepting a target 
   assert.equal(calls.length, 1)
 })
 
+test('same logical Environment routes different Service Targets to different endpoints', async () => {
+  const { config } = await setup()
+  await config.createServiceTarget({ id: 'vehicle', name: 'Vehicle', environmentIds: ['dev'], defaultEnvironmentId: 'dev', endpoints: { dev: { baseUrl: 'https://vehicle.example.test/api' } } })
+  await config.createOperation(operation('vehicle', '/vehicles', { serviceTargetId: 'vehicle', kitIds: ['rpa'] }))
+  const calls = []
+  const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response(200, '{}'), calls) })
+  assert.equal((await executor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'x' } }, exec())).ok, true)
+  assert.equal((await executor.execute({ operationId: 'vehicle' }, exec())).ok, true)
+  assert.equal(calls[0].url, 'https://api.example.test/api/users/x?q=x')
+  assert.equal(calls[1].url, 'https://vehicle.example.test/api/vehicles')
+})
+
 test('path, query and header declarations are enforced at execution time', async () => {
   const { config } = await setup()
   const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response()) })
@@ -173,7 +185,7 @@ test('stale session, host allowlist, cancellation and transport errors are safe'
   const { config } = await setup()
   const calls = []
   const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response(), calls) })
-  assert.throws(() => buildUrl({ ...config.getEnvironment('dev'), allowedHosts: ['other.example.test'] }, { path: '/users/x' }, '/users/x'), (error) => error.code === 'HOST_NOT_ALLOWED')
+  assert.throws(() => buildUrl({ ...config.getEnvironment('dev') }, { path: '/users/x' }, '/users/x', { baseUrl: 'https://api.example.test', allowedHosts: ['other.example.test'] }), (error) => error.code === 'HOST_NOT_ALLOWED')
   assert.equal(calls.length, 0)
 
   const fresh = await setup()

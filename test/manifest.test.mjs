@@ -43,6 +43,8 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(typert, /namespace: 'api-kit'/)
   assert.match(typert, /'listOperations'/)
   assert.match(typert, /'createOperation'/)
+  assert.match(typert, /'createServiceTarget'/)
+  assert.match(typert, /'createEnvironment'/)
   assert.match(typert, /'getSessionActivation'/)
   assert.match(typert, /'setSessionActivation'/)
   assert.match(typert, /'clearSessionActivation'/)
