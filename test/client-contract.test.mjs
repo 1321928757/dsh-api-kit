@@ -167,6 +167,18 @@ test('UI-08 preserves dialog focus, independent request generations, loading sta
   assert.match(client, /overflow-x:hidden/)
 })
 
+test('UI-09 provides compact settings lists, progressive disclosure, and grouped sections', () => {
+  for (const marker of ['SETTINGS_LIST_INITIAL_LIMIT', 'expandedOperationList', 'expandedTargetList', 'settingsGroups', 'settingsGroup', 'dsh-api-kit-settings-group', '还有 ', '个）', '收起', 'kind', 'aria-pressed', 'dsh-api-kit-operation-card{display:grid', 'dsh-api-kit-connection-item{display:grid', 'overflow-wrap:anywhere']) {
+    assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  }
+  assert.match(client, /visibleKitOperations = expandedOperationList \? kitOperations : kitOperations\.slice\(0, SETTINGS_LIST_INITIAL_LIMIT\)/)
+  assert.match(client, /visibleTargets = expandedTargetList \? targets : targets\.slice\(0, SETTINGS_LIST_INITIAL_LIMIT\)/)
+  assert.match(client, /progressiveListControl\('Operation'/)
+  assert.match(client, /progressiveListControl\('Service Target'/)
+  assert.match(client, /React\.Fragment, null, React\.createElement\('section', \{ className: 'dsh-api-kit-card dsh-api-kit-connection-section'/)
+  assert.match(client, /className: 'dsh-api-kit-settings-group-summary'.*onClick: \(event\) => \{ event\.preventDefault\(\); toggleSettingsGroup\(key\) \}/)
+})
+
 test('T13 guards stale async responses and preserves actionable JSON errors', () => {
   assert.match(client, /mountedRef/)
   assert.match(client, /requestRef/)
@@ -177,4 +189,53 @@ test('T13 guards stale async responses and preserves actionable JSON errors', ()
   assert.match(client, /重试绑定列表/)
   assert.match(client, /IMPORT_STALE_PREVIEW/)
   assert.match(client, /aria-busy/)
+})
+
+test('UI-10 keeps ordinary controls sized and excludes choice controls', () => {
+  assert.match(client, /\.dsh-api-kit-control:not\(\[type=checkbox\]\):not\(\[type=radio\]\):not\(\.dsh-api-kit-control-textarea\)/)
+  assert.match(client, /height:40px;min-height:40px/)
+  assert.match(client, /\.dsh-api-kit-control-textarea[^}]*height:auto;min-height:112px/)
+  assert.match(client, /dsh-api-kit-control#dsh-api-kit-openapi-json[^}]*min-height:150px;max-height:180px/)
+  assert.match(client, /dsh-api-kit-settings \.dsh-api-kit-field>input:not\(\[type=checkbox\]\):not\(\[type=radio\]\)/)
+  assert.match(client, /dsh-api-kit-create-row>\.dsh-api-kit-field>\.dsh-api-kit-control[^}]*height:40px;min-height:40px/)
+  assert.doesNotMatch(client, /(^|[,{])\.dsh-api-kit-control\{[^}]*height:40px/)
+  for (const match of client.matchAll(/React\.createElement\('select', \{([^}]*)\}/g)) {
+    assert.match(match[1], /className: 'dsh-api-kit-control'/)
+  }
+})
+
+test('UI-11 gives dynamic fields stable IDs and one-to-one associations', () => {
+  assert.match(client, /function fieldId\(label, explicit, fallback\)/)
+  assert.match(client, /function domIdSegment\(value\)/)
+  assert.match(client, /function choiceDomId\(id, value\)/)
+  assert.doesNotMatch(client, /dsh-api-kit-field--/)
+  for (const id of [
+    'dsh-api-kit-environment-id', 'dsh-api-kit-environment-name', 'dsh-api-kit-environment-description',
+    'dsh-api-kit-target-id', 'dsh-api-kit-target-name', 'dsh-api-kit-target-description',
+    'dsh-api-kit-target-default-environment', 'dsh-api-kit-target-auth-profiles',
+    'dsh-api-kit-import-target', 'dsh-api-kit-import-environment', 'dsh-api-kit-import-auth-profile',
+    'dsh-api-kit-import-mode-new', 'dsh-api-kit-import-mode-existing',
+    'dsh-api-kit-operation-id', 'dsh-api-kit-operation-operation-id', 'dsh-api-kit-operation-name',
+    'dsh-api-kit-operation-method', 'dsh-api-kit-operation-service-target',
+  ]) assert.match(client, new RegExp(id.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  for (const marker of ['${id}-base-url', '${id}-timeout', '${id}-allowed-hosts', '${id}-allowed-cidrs', '${id}-port', '${id}-max-response-bytes', '${id}-max-redirects', '${id}-allow-private-network', '${id}-allow-privileged-port']) {
+    assert.ok(client.includes(marker), `missing dynamic endpoint marker: ${marker}`)
+  }
+  assert.match(client, /'aria-describedby': describedBy/)
+  assert.match(client, /targetForm\.environmentIds\.map\(endpointFields\)/)
+  assert.match(client, /htmlFor: 'dsh-api-kit-import-target'/)
+  assert.match(client, /htmlFor: 'dsh-api-kit-operation-service-target'/)
+})
+
+test('UI-12 protects the OpenAPI import heading at settings container widths', () => {
+  assert.match(client, /\.dsh-api-kit-import-heading\{display:grid;grid-template-columns:minmax\(0,1fr\) auto/)
+  assert.match(client, /\.dsh-api-kit-import-heading>\.dsh-api-kit-import-steps\{grid-column:1 \/ -1;width:100%;min-width:0\}/)
+  assert.match(client, /@container \(max-width:720px\)\{[^}]*\.dsh-api-kit-import-heading\{grid-template-columns:1fr\}/)
+  assert.match(client, /dsh-api-kit-import-heading>\.dsh-api-kit-import-steps ol\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}/)
+  assert.match(client, /dsh-api-kit-import-heading>\.dsh-api-kit-button\{width:100%;min-height:40px\}/)
+  assert.match(client, /@container \(max-width:520px\)\{[^}]*dsh-api-kit-import-heading>\.dsh-api-kit-import-steps ol\{grid-template-columns:1fr\}/)
+  assert.match(client, /dsh-api-kit-import-step-button\{min-height:40px\}/)
+  assert.match(client, /setActiveStep\('configure'\)/)
+  assert.match(client, /setActiveStep\('confirm'\)/)
+  assert.doesNotMatch(client, /fetch\s*\(/)
 })
