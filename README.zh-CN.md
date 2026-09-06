@@ -24,6 +24,7 @@
 - **Host-only 认证：** 设置页可创建、编辑、启用/停用、绑定和删除未被引用的 Auth Profile，支持无认证、Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials。secret 只能通过 Host credentials 流程设置、替换或删除，并且只在请求执行时由 Host 解析。Query API Key 明确标记为可能进入 URL，默认禁止执行。
 - **响应治理与审计：** 响应会进行有界处理和保守脱敏；调用和策略拒绝写入本地白名单 JSONL 审计文件。
 - **可访问 Web UI：** 设置页和会话选择器使用 DSH 主题令牌，支持键盘/焦点管理、语义化状态反馈、响应式布局、触控尺寸主控件和 reduced-motion。
+- **紧凑会话范围摘要：** 输入栏对较长的 Kit 或 Environment 组合只显示最多 5 个字符，超出部分使用 `...`；完整的安全范围仍可通过按钮 title、辅助名称和选择弹窗获取。
 
 ## Agent 工具
 
@@ -133,6 +134,14 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 ### 会话输入栏
 
 **API 套件**选择器是会话级开关，不是全局开关。它展示安全名称、可用性、兼容性和诊断信息，但不展示 base URL、host/CIDR 策略、凭据引用或 secret 值。
+
+即使 Kit 或 Environment 名称很长，输入栏仍会保持紧凑：可见摘要最多显示 5 个字符，超出部分显示为 `...`；完整安全范围仍可通过按钮 title、辅助名称和选择弹窗获取。
+
+![API Kit 选择器的五字符紧凑摘要](https://raw.githubusercontent.com/1321928757/dsh-api-kit/main/assets/conversation-picker-selected.png)
+
+展开选择器后，完整的 Kit 和 Environment 元数据仍可用于选择和复核，不会把长名称撑宽输入栏工具区。
+
+![展开的 API Kit 选择器](https://raw.githubusercontent.com/1321928757/dsh-api-kit/main/assets/conversation-picker-selected-expanded.png)
 
 ## 安全与权限
 

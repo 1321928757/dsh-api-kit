@@ -24,6 +24,7 @@
 - **Host-only authentication:** Settings can create, edit, enable/disable, bind, and delete safe Auth Profile metadata for no auth, Bearer, Basic, header/query API key, and OAuth2 Client Credentials. Secrets are set/replaced/removed through Host credentials only and are resolved only when a request is executed. Query API keys remain disabled by default and are marked as URL-risky.
 - **Response governance and audit:** Responses are bounded and conservatively redacted. Calls and policy rejections are written to a local allowlisted JSONL audit file.
 - **Accessible Web UI:** Settings and the session picker use DSH theme tokens, keyboard/focus handling, semantic status feedback, responsive layouts, touch-sized primary controls, and reduced-motion support.
+- **Compact session scope label:** The composer shows a bounded five-character summary with `...` for long Kit or Environment combinations, while the full safe scope remains available through the button title, accessible name, and picker dialog.
 
 ## Agent tools
 
@@ -133,6 +134,14 @@ Malformed JSON is reported beside the field while the draft is preserved. Import
 ### Conversation input
 
 The **API 套件** picker is session-scoped rather than a global switch. It shows safe names, availability, compatibility, and diagnostics. It does not show base URLs, host/CIDR policy, credential references, or secret values.
+
+The composer keeps this scope label compact even when a Kit or Environment has a long name. The visible label is capped at five characters plus `...`; the complete safe scope remains available from the button title, accessible name, and picker dialog.
+
+![API Kit picker with a compact five-character scope label](https://raw.githubusercontent.com/1321928757/dsh-api-kit/main/assets/conversation-picker-selected.png)
+
+The expanded picker keeps the complete Kit and Environment metadata visible for selection and review without putting long names into the composer toolbar.
+
+![Expanded API Kit picker](https://raw.githubusercontent.com/1321928757/dsh-api-kit/main/assets/conversation-picker-selected-expanded.png)
 
 ## Security and permissions
 

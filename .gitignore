@@ -1,4 +1,6 @@
 node_modules/
+.agents/
+openspec/
 *.tgz
 *.log
 storages/

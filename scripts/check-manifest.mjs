@@ -44,6 +44,8 @@ const expectedFiles = [
   'cordis.patch.yml',
   'README.md',
   'README.zh-CN.md',
+  'screenshots.json',
+  'assets',
   'CHANGELOG.md',
   'LICENSE',
   'NOTICE',

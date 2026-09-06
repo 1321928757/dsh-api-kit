@@ -170,6 +170,8 @@ test('T03 package files include Registry runtime artifacts', () => {
     'cordis.patch.yml',
     'README.md',
     'README.zh-CN.md',
+    'screenshots.json',
+    'assets',
     'CHANGELOG.md',
     'LICENSE',
     'NOTICE',
