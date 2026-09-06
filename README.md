@@ -1,91 +1,275 @@
 # dsh-api-kit
 
-> A local-first DeepSeek Harness profile bundle for API Kits, OpenAPI definitions, session-scoped enablement, and controlled API calls.
+> A local-first DeepSeek Harness Web profile bundle for registering approved API definitions, importing OpenAPI JSON, selecting API Kits per conversation, and calling fixed HTTP Operations from Agent tools.
 
-## Status
+[中文文档](./README.zh-CN.md)
 
-T14 is complete on top of the T13 settings page and session Kit picker. It adds policy-gated write intent confirmation and Host-only OAuth2 Client Credentials support. The fixed tools are `api_kits`, `api_operations`, `api_describe`, `api_call`, `api_write_prepare`, and `api_write_execute`.
+> **Data boundary:** Registry definitions and non-sensitive settings are stored locally. Credential values are resolved on the Host at request time and are not returned to the browser, Agent tools, or the runtime context. API parameters and projected API responses are still ordinary tool data and may be sent to the LLM provider configured for your DSH session.
 
-- Definitions and non-sensitive configuration stay in the local Registry; real credentials are resolved per request on the Host only.
-- `api_call` accepts only a stable `operationId` and declared parameters; GET/HEAD execute directly while write methods only produce a confirmation intent and never send HTTP.
-- `api_write_prepare` creates a short-lived, single-use confirmation intent without network access. `api_write_execute` sends a write only after a Host-owned approved intent is presented with the same Session, Environment, target, request, and Registry bindings.
-- The target is built only from a registered Service Target endpoint `baseUrl` for the selected Environment and the Operation path. The model cannot provide a URL, host, session ID, proxy, or redirect policy.
-- Each Service Target may map every logical Environment to a different endpoint, so order and vehicle services can use different `demo` roots while the session still selects one `demo` Environment. Endpoint hostnames must be allowlisted. Every DNS answer is checked; loopback, link-local, metadata, reserved/documentation addresses, and high-risk IPv4-mapped IPv6 addresses are rejected.
-- RFC1918, IPv6 ULA, and CGNAT addresses additionally require `allowPrivateNetwork: true` and a matching `allowedCidrs` entry. A hostname allowlist alone never enables private access.
-- The pinned transport connects to a checked IP while retaining the registered hostname for HTTPS SNI and the HTTP Host header. Production requests do not use a proxy, implicit retry, or automatic redirect.
-- 301/302/303/307/308 return the safe `REDIRECT_NOT_ALLOWED` error without exposing or following `Location`.
-- JSON success and error bodies are recursively redacted using defaults plus Operation `policy.redactKeys`; text, XML, JavaScript, unknown content types, and non-2xx bodies also receive conservative sensitive-value redaction before depth, array, string, key, and byte governance. Response headers are not returned.
-- OAuth2 supports only HTTPS fixed token endpoints, Client Credentials, and `client_secret_basic`/`client_secret_post`. Secrets are resolved per request on the Host; token caches are isolated by Profile, Service Target, Environment, and effective endpoint policy, with redirects denied.
-- Every `api_call` policy rejection and network attempt is written to `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`. Audit records use an allowlist, lazily retain 14 days by default, and never contain credentials, headers, URL, body, stack, or cause. Audit failures do not affect the business result.
+## At a glance
 
-## T13 UI quality and usability
+| Surface | What it provides |
+| --- | --- |
+| **Settings → API Kit** | Create and manage Kits, Operations, Environments, and Service Targets; inspect safe authentication metadata and import OpenAPI/Swagger JSON with preview and explicit confirmation. |
+| **Conversation input** | Activate one or more API Kits and one common logical Environment for the current conversation. |
+| **Agent tools / runtime** | Discover registered Operations, read their safe contracts, call fixed GET/HEAD endpoints, and prepare or execute policy-gated writes with Host approval. |
 
-- Settings and the session picker consume the DSH Inspect-confirmed `--dsw-*` tokens for light/dark surfaces, text, borders, and state colors; Server URLs remain display-only.
-- Primary controls are at least 44px high and support visible focus, Tab/Shift+Tab, Enter/Space, and Escape. The picker manages focus on open, traps Tab within the dialog, and restores focus to its trigger on close.
-- The settings layout becomes single-column/wrapping at 720px/520px. Long names and diagnostics wrap, the picker stays within the viewport, and reduced-motion users get no spinner/transition animation.
-- RPC loads and submissions use request-generation and unmount guards. Binding lists preserve partial successes and expose retry actions; malformed JSON is reported beside its field while the draft is preserved.
-- Errors such as `IMPORT_STALE_PREVIEW` explain the recovery action, and loading, empty, success, and error states use text/ARIA feedback rather than color alone.
-- T13 local contract/full regression and isolated-profile installation are complete. Because this repository has no dedicated browser smoke script, real browser theme, keyboard, and narrow-screen interaction still require a pre-release check in a repeatable browser environment.
+## Features
 
-## Session-scoped Kit selection
-
-- The `conversation.input.left` API Kit control uses slot ID `dsh-api-kit` and order `93`.
-- A session can activate multiple Kits and one common logical Environment (for example, `demo`). Each Operation then resolves its own Service Target endpoint for that Environment. Selection is held in a Host-only in-memory map keyed by the authoritative session ID.
-- Every read and tool call revalidates Kit/Operation/Environment state, Agent permissions, and environment compatibility.
-- The selector and Agent tools do not expose base URLs, host allowlists, credential references, or secrets.
+- **API Kits and Operations:** Organize approved HTTP Operations by project or service domain. Operations retain method, relative path, parameters, request body, responses, tags, authentication reference, and an explicit Agent policy.
+- **OpenAPI JSON import:** Preview and import OpenAPI 3.0/3.1 or Swagger 2.0 JSON. The workflow reports paths, tags, operations, diagnostics, and new/update/conflict/skip classifications before one atomic Registry commit.
+- **Environment and Service Target separation:** An Environment represents a logical stage such as `demo`, `dev`, or production. A Service Target represents a logical service and stores a separate endpoint and network policy for each bound Environment.
+- **Session-scoped activation:** The conversation picker stores activation in a Host-only in-memory map keyed by the authoritative session ID. Each active Kit must share the selected Environment.
+- **Fixed-target execution:** Agent calls use a stable `operationId`, declared parameters, a registered Service Target endpoint, and the Operation path. The model cannot supply an arbitrary URL, host, proxy, redirect policy, session ID, or credential value.
+- **Host-only authentication:** Supported metadata includes no auth, Bearer, Basic, header/query API key, and OAuth2 Client Credentials. Secrets are resolved only when a request is executed.
+- **Response governance and audit:** Responses are bounded and conservatively redacted. Calls and policy rejections are written to a local allowlisted JSONL audit file.
+- **Accessible Web UI:** Settings and the session picker use DSH theme tokens, keyboard/focus handling, semantic status feedback, responsive layouts, touch-sized primary controls, and reduced-motion support.
 
 ## Agent tools
 
-- `api_kits`: list safe Kit and Environment summaries for the current session.
-- `api_operations`: discover Operations by keyword, Tag, method, Service Target, and pagination.
-- `api_describe`: return the complete safe calling contract for a stable `operationId`.
-- `api_call`: call a fixed Operation using only declared path/query/business-header parameters; writes produce a confirmation intent only.
-- `api_write_prepare`: prepare an allowed write without network access.
-- `api_write_execute`: execute one write with a Host-approved, fully bound confirmation token; no approve tool is exposed to the model.
+All tools are fixed registrations. They do not accept arbitrary URLs or expose a `sessionId` argument; the Host obtains the authoritative session from the current Agent execution context.
 
-Recommended flow: `api_kits → api_operations → api_describe → api_call`; writes use `api_write_prepare → human approval → api_write_execute`. The model must not guess URLs, hosts, credentials, bypass session activation, or approve its own confirmation.
+| Tool | Parameters | Network / result |
+| --- | --- | --- |
+| `api_kits` | No business parameters. | No network. Returns bounded Kit and Environment summaries for the current session, including active IDs and read/write counts. |
+| `api_operations` | Optional `query`, exact `tag`, `method`, `serviceTargetId`, `offset` (default `0`), and `limit` (default `20`, maximum `100`). | No network. Searches only Operations discoverable through the current session’s active Kits and Environment. |
+| `api_describe` | Required `operationId` returned by `api_operations`. | No network. Returns the complete safe call contract, including declared parameters, request/response schema previews, policy metadata, and relative path; it does not return credentials or arbitrary target URLs. |
+| `api_call` | Required `operationId`; optional `pathParams`, `query`, `headers`, and `body` fields. Only declared path/query/business-header keys are accepted. | Executes fixed **GET/HEAD** Operations. `body`, cookie parameters, undeclared keys, controlled headers, invalid schema values, and policy violations are rejected. Write methods produce a confirmation intent instead of sending HTTP. |
+| `api_write_prepare` | Required `operationId`; optional declared `pathParams`, `query`, `headers`, and JSON `body`. | No network. Creates a short-lived, single-use Host confirmation intent only when the Operation and active Kit policies allow the write. |
+| `api_write_execute` | Required `operationId` and `confirmationToken`; the same logical request fields used during preparation. | Sends one write only after the Host has approved the matching intent. The token is bound to the Session, Operation, method, Service Target, Environment, request fingerprint, and current Registry fingerprint; replay and mismatches fail closed. |
 
-## Dynamic runtime context
+Recommended read flow:
 
-For every model-step prompt assembly, the Host provider re-reads the current session activation and Registry state using the Agent's authoritative session ID. It contributes a short summary containing active Kit names/descriptions, the selected Environment, discoverable/read-only/write counts, fixed tool names, the discovery-to-call workflow, and the read-only/SSRF/response/audit boundaries. It never includes base URLs, concrete hosts or CIDRs, credential references or values, request headers/cookies, or full OpenAPI schemas. Disabling or clearing a Kit or Environment is reflected on the next assembly; the DSH runtime projection replaces or clears the previous snapshot.
+```text
+api_kits → api_operations → api_describe → api_call
+```
 
-## OpenAPI JSON import and confirmation
+Write flow:
 
-T12 adds a settings workflow: paste JSON → preview → choose Tags, registered Service Target, Environment, Auth Profile and one or more Kits → decide conflicts → explicit confirmation and one atomic Registry write. The selected Environment is a logical stage; the chosen Service Target supplies its stage-specific endpoint. The Host re-parses the document and current Registry at confirmation and never trusts browser-supplied candidate fields; validation, concurrency, or persistence failure leaves the whole batch uncommitted.
+```text
+api_write_prepare → human approval → api_write_execute
+```
 
-- `previewOpenApiImport(args)` returns bounded preview data, document and Registry fingerprints, Tag/service counts, and a transactionId; it never stores the full source document.
-- `confirmOpenApiImport(args)` requires the original JSON, transactionId, preview fingerprints, and explicit bindings. Only existing Targets/Environments/Auth Profiles/Kits are accepted. Repeating a successful confirmation with the same transactionId and selection is idempotent.
-- Tag selection applies only to the current source-key selection. Conflicts support `overwrite`, `keep-local`, and `skip`. Write operations retain the non-Agent-callable safe default.
-- Server URLs remain display-only and never create Environments. Import archiving is disabled by default; an archive failure does not roll back or invalidate the Registry commit.
+The model has no approval tool and cannot approve its own confirmation token.
 
+## Requirements and compatibility
 
-T11 exposes the DSH-independent `buildOpenApiImportPreview(input, options)` function (also exported as `previewOpenApiImport`) for OpenAPI 3.0/3.1 and Swagger 2.0 JSON strings or objects. It performs bounded normalization of paths, parameters, request bodies, responses, server candidates, and authentication templates, resolves only local JSON Pointer `$ref` values, and produces stable Operation provenance plus new/update/conflict/skip classifications.
+- A DSH installation with the **Web profile bundle** loader and a Node.js runtime capable of loading ESM packages.
+- Install-time peer integrations are supplied by DSH when available: `@deepseek-ai/cordis`, `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, `@deepseek-ai/dsh-client-ui-primitives`, and `react`. They are declared as optional peer dependencies in this package.
+- The bundle uses the DSH Web client slots `conversation.input.left` and `settings.section`, plus a Host Typert service named `apiKitConfig` in the `api-kit` namespace.
+- The package currently exposes a Web bundle and does not claim compatibility with non-Web profiles, arbitrary OpenAPI vendor extensions, or every DSH runtime version. Verify the target DSH release and Inspect-confirmed slots before a production rollout.
+- OAuth2 requires a Host credentials provider and secure HTTP transport. Private endpoints require explicit opt-in and matching CIDRs.
 
-- `serverCandidates` are display-only confirmation candidates. They never create or trust an Environment; Swagger `host/basePath/schemes` are not direct call targets either.
-- Authentication templates contain only non-sensitive metadata for Bearer, Basic, Header/Query API Keys, and OAuth2 Client Credentials. Secrets are never imported, and Query API Keys remain disabled by default. OpenID Connect, mTLS, remote `$ref`, YAML, and URL/Git import remain outside the importer scope. OAuth2 does not include authorization code, PKCE, OIDC discovery, refresh-token persistence, browser callbacks, or arbitrary token endpoints.
-- Preview accepts only in-memory JSON, performs no file or network access, and does not mutate the Registry or the input object. Candidates without registered Service Target/Auth Profile bindings carry `needsBinding` for the T12 confirmation transaction.
-- Invalid versions, paths, external/cyclic/missing refs, controlled headers, invalid response statuses, and uploads produce structured diagnostics instead of silently creating callable definitions. Write operations remain disabled for Agent execution by default.
+## Install, update, or remove
 
-## Installation
+### Install from GitHub
+
+The current repository version is `0.1.0`:
 
 ```powershell
 dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.0
 ```
 
-For development, install the local tgz into an isolated test profile rather than replacing a profile currently in use.
+Restart the existing `dsh web` process after installing or updating so the new bundle enters the Web boot graph. This command installs into the `web` profile; use another isolated profile for testing.
 
-## Development checks
+### Verify that the profile loads the bundle
+
+```powershell
+dsh --profile web --dump-config | findstr dsh-api-kit
+```
+
+Then open DSH Web and confirm both of these entries are present:
+
+1. **Settings → API Kit**;
+2. **API 套件** in the conversation input bar.
+
+If the configuration row is present but the UI is missing, stop the old Web process, restart it, refresh the page, and inspect the boot logs before troubleshooting the configuration itself.
+
+### Update or remove
+
+```powershell
+dsh plugin --profile web update dsh-api-kit@latest
+dsh plugin --profile web remove dsh-api-kit
+```
+
+Use the pinned GitHub tag form when you need a reproducible version instead of `@latest`.
+
+### Local development install
+
+Build a package snapshot and install it into an isolated profile. This avoids replacing a profile currently used by DSH Web and avoids Windows cross-drive `link:` path problems.
+
+```powershell
+pnpm pack
+# Copy the generated tgz to a convenient local path if the profile is on another drive.
+dsh plugin --profile demo add C:\path\to\dsh-api-kit-0.1.0.tgz
+dsh --profile demo --dump-config | findstr dsh-api-kit
+```
+
+Restart the DSH process for that profile after each package update.
+
+## Quick start
+
+1. **Create an Environment.** In **Settings → API Kit → Connection configuration**, add an ID such as `demo`. Keep production environments disabled for Agent use unless you explicitly need them.
+2. **Create a Service Target.** Bind it to one or more Environments and configure one endpoint per binding, for example `demo → https://api.example.test`. The endpoint host is automatically included in its host allowlist; review any additional `allowedHosts`, timeouts, and response limits.
+3. **Configure private-network policy only when necessary.** For an internal endpoint, enable private-network access and add matching `allowedCidrs` entries, such as `172.31.33.216/32`. A hostname allowlist alone does not grant private access.
+4. **Optionally bind an Auth Profile.** If an Auth Profile is already available in the Host/Registry, choose no auth, Bearer, Basic, API key, or OAuth2 Client Credentials as appropriate. Store only a credential reference in the Registry; configure the actual value through the DSH Host credentials service. The current Web settings surface exposes safe auth metadata for binding; it does not expose secret values.
+5. **Import the API definition.** Paste an OpenAPI 3.0/3.1 or Swagger 2.0 JSON document, choose **Validate and preview**, select Tags and an existing Service Target/Environment/Auth Profile, resolve conflicts, and use **Confirm and import**. `servers[].url` and Swagger `host/basePath/schemes` are display-only candidates; they never become trusted call targets automatically.
+6. **Activate the scope.** In the conversation input bar, open **API 套件**, select one or more enabled Kits, and select a compatible common Environment.
+7. **Ask the Agent to use the fixed flow.** It should discover an Operation, describe its required parameters, and call it by `operationId`. Start with read-only GET/HEAD Operations and add a SQL-like `LIMIT` or API-side pagination yourself when the upstream service supports it.
+8. **Treat writes as a separate change.** A write must be enabled by both the Operation and Kit policy and must pass Host approval. Preparation never contacts the API; execution consumes the approved intent once.
+
+## Feature tour
+
+### Settings → API Kit
+
+The settings section has three main areas:
+
+- **OpenAPI import:** paste JSON, preview bounded metadata and diagnostics, choose Tags and bindings, review conflicts, and explicitly confirm one atomic import;
+- **Connection configuration:** maintain logical Environments and Service Targets with per-Environment endpoints, allowlists, private-network CIDRs, timeouts, and response limits; inspect available Auth Profile metadata without exposing secrets;
+- **API Kit workbench:** create an empty Kit, inspect its Operations, enable/disable Operations, edit policies, and remove referenced objects only after their links are cleared.
+
+Malformed JSON is reported beside the field while the draft is preserved. Import failures such as `IMPORT_STALE_PREVIEW` include a recovery hint to preview the original document again.
+
+### Conversation input
+
+The **API 套件** picker is session-scoped rather than a global switch. It shows safe names, availability, compatibility, and diagnostics. It does not show base URLs, host/CIDR policy, credential references, or secret values.
+
+## Security and permissions
+
+The application-layer controls below narrow what this bundle can do. They do not replace least-privilege database/service accounts, upstream authorization, network segmentation, or TLS configuration.
+
+| Guardrail | What is enforced | Important boundary |
+| --- | --- | --- |
+| Fixed target | The Host constructs a URL only from a registered Service Target endpoint and a relative Operation path. | This is not an arbitrary-URL internet or intranet proxy. The model cannot choose a host, proxy, redirect policy, or credentials. |
+| Host allowlist | The endpoint hostname must be registered. Every DNS answer is checked before production transport uses a pinned address. | A hostname allowlist is not a complete authorization boundary; DNS and server-side permissions still matter. |
+| SSRF / private network | Loopback, link-local, metadata, reserved/documentation, and high-risk mapped addresses are rejected. RFC1918, IPv6 ULA, and CGNAT addresses additionally require `allowPrivateNetwork: true` plus a matching `allowedCidrs` entry. | Private access is an explicit exception, not a default. Review the full DNS answer set and use narrow CIDRs. |
+| Transport | Production requests connect to the checked IP while retaining the registered hostname for HTTPS SNI and HTTP `Host`. No proxy, implicit retry, or automatic redirect is used. | HTTP itself may be unsuitable for sensitive data; deployment-level TLS and network controls remain your responsibility. |
+| Request shape | Only declared path/query/business-header parameters are accepted. Controlled headers, undeclared keys, unsafe relative paths, cookie parameters, and invalid JSON Schema values are rejected. | The declaration and schema must be correct; an API-side authorization policy remains necessary. |
+| Credentials | Credential values are resolved on the Host at request time. Safe views expose status/metadata, not `secretRef`, passwords, tokens, or client secrets. | Credential storage and the configured DSH Host remain trusted components. API results are still model-visible tool output. |
+| Read/write policy | GET/HEAD are the direct read path. Writes require Operation `allowAgentCall`, Operation `allowWrite` and confirmation policy, active Kit write policy, and a matching Host-approved one-shot intent. | Defaults are fail-closed, but an administrator can deliberately enable a write. Approval does not grant broader target or credential access. |
+| Response governance | JSON is recursively redacted using defaults and Operation `policy.redactKeys`; text, XML, JavaScript, unknown types, and non-2xx bodies receive conservative sensitive-value redaction. Depth, array, string, object-key, byte, timeout, and response-size limits apply. Response headers are not returned. | The response limit is an application read/projection limit. It is not a guarantee that the upstream server stopped scanning or sending data before the Host received it. |
+| Audit | Calls and policy rejections are projected to an allowlisted JSONL record with no URL, path, query, headers, body, credentials, stack, or error cause. Files are lazily cleaned after 14 days by default. | Audit is best-effort: an audit write failure does not change the business result. Protect the local DSH home directory. |
+
+## Known limitations
+
+- Only **JSON** OpenAPI/Swagger documents are imported. YAML, URL/Git import, remote `$ref`, and unsupported vendor-specific schema behavior are out of scope. Local JSON Pointer `$ref` values are bounded by depth/count limits; missing or cyclic references produce diagnostics.
+- `servers[].url` and Swagger `host/basePath/schemes` are display-only. A previously registered Service Target and its Environment endpoint are always required for an imported Operation.
+- The fixed Agent read path executes only GET/HEAD. `OPTIONS` can be registered/discovered but is not a direct `api_call` method. POST/PUT/PATCH/DELETE require the separate write-confirmation flow.
+- Write preparation is offline, short-lived, single-use, and bound to the current Registry. The model cannot approve a token; if Host approval is unavailable, execution fails closed.
+- Only JSON request bodies are supported for writes. Cookie parameters, multipart/file uploads, GraphQL, SSE, WebSocket, automatic redirects, implicit retries, and an independent MCP Server are not supported.
+- Authentication supports no auth, Bearer, Basic, header/query API keys, and OAuth2 Client Credentials. Query API keys are disabled by default. OAuth2 does not implement authorization code, PKCE, OIDC discovery, refresh-token persistence, browser callbacks, arbitrary token endpoints, or non-HTTPS token endpoints.
+- Response governance happens while reading and projecting the response. A large upstream query may still consume server, network, and Host resources; add request-side filters and pagination/`LIMIT` values where the API supports them.
+- The Registry is local to the DSH profile. Session activation is in-memory and session-scoped; after a new session or process restart, select the Kit and Environment again.
+- This repository has no dedicated browser smoke script. Before release, verify both light/dark themes, keyboard focus, narrow-screen layout, connection errors, and the installed profile in a repeatable DSH Web environment.
+
+## How it works
+
+```text
+Settings / conversation picker
+        │ DSH slots + Typert JSON RPC
+        ▼
+Host bundle (apiKitConfig + fixed Agent tools)
+        │
+        ├── local Registry: Kits, Operations, Environments, Targets, auth metadata
+        ├── Host credentials: request-time secret resolution
+        ├── pinned HTTP transport: allowlist + DNS/IP/CIDR validation
+        └── runtime context: bounded session summary for prompt assembly
+```
+
+- The Host entry mounts the `apiKitConfig` service, registers the fixed Agent tools, and registers a dynamic `systemPrompt.context` provider.
+- The browser bundle registers `conversation.input.left` with slot ID `dsh-api-kit` and `settings.section` with ID `api-kit`.
+- Typert uses the `api-kit` namespace and `apiKitConfig` service. Client calls unwrap the standard `{ ok, value }` gateway envelope before using the safe value.
+- The Registry is stored by default at `$DSH_HOME/storages/dsh-api-kit/registry.json`; atomic updates, backups, integrity checks, and legacy migration are handled by the Host store.
+- Audit records are stored by default at `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`.
+- Runtime context is rebuilt for every model-step prompt assembly from the current authoritative session activation and Registry. It contains counts, names, workflow, and boundaries, not URLs, concrete hosts, CIDRs, credential references, headers, cookies, or full schemas.
+- Dispose and Agent lifecycle events clear session activation, pending write confirmations, OAuth client caches, and mounted client contributions.
+
+## FAQ and troubleshooting
+
+<details>
+<summary><b>The API Kit button or Settings section is missing</b></summary>
+
+Confirm that the package is installed into the profile you are running:
+
+```powershell
+dsh --profile web --dump-config | findstr dsh-api-kit
+```
+
+Restart the existing `dsh web` process and refresh the page. Installing a package does not inject it into an already-running boot graph. If it still does not appear, check the DSH boot log and confirm the profile is a Web profile.
+
+</details>
+
+<details>
+<summary><b>The Agent says no Kit or Environment is active</b></summary>
+
+Open the conversation’s **API 套件** picker, select at least one enabled Kit, and choose one compatible Environment. Multiple Kits must have a common Environment. If a Kit or Environment was disabled or edited after selection, reselect it so Host validation can rebuild the current scope.
+
+</details>
+
+<details>
+<summary><b>The import preview or confirmation failed</b></summary>
+
+For `JSON_INVALID`, fix the JSON syntax beside the input field. For `IMPORT_STALE_PREVIEW`, `IMPORT_TRANSACTION_MISMATCH`, or `IMPORT_DOCUMENT_MISMATCH`, paste the original unchanged JSON and run preview again. Ensure every selected Operation has an existing enabled Service Target, a bound Environment endpoint, and at least one existing Kit (or use the new-Kit import path in the UI). Server URLs in the document do not create trusted targets.
+
+</details>
+
+<details>
+<summary><b>The API call cannot connect or is rejected by the target policy</b></summary>
+
+Check the Service Target’s endpoint for the selected Environment, its `allowedHosts`, port, DNS answers, and private-network settings. A private endpoint needs both `allowPrivateNetwork` and a matching `allowedCidrs` entry. Requests originate from the DSH Host, not from the browser. Redirects are intentionally returned as `REDIRECT_NOT_ALLOWED`; register the final fixed endpoint instead.
+
+</details>
+
+<details>
+<summary><b>The response is empty, truncated, or too large</b></summary>
+
+Check the upstream status and the Operation/endpoint response limits. The tool returns a bounded projection and may redact malformed or sensitive content. Reduce the API query with filters, pagination, or a service-supported `LIMIT`; the application limit does not guarantee that the upstream service avoided a large scan.
+
+</details>
+
+<details>
+<summary><b>Why was a write refused?</b></summary>
+
+Writes require a write method, Operation and Kit write policies, a Host approval, and the exact request/Registry/session binding used during preparation. `api_write_prepare` never contacts the network. A missing approval, stale Registry, token replay, changed parameters, disabled Kit/Target, missing credential, unsupported body, or unavailable approval UI fails closed. Query the Operation with `api_describe` and start a new prepare flow.
+
+</details>
+
+<details>
+<summary><b>Can the browser or model see my password or token?</b></summary>
+
+The browser-facing safe views do not include `secretRef`, password, token, client secret, request headers, or response headers. The Host resolves credentials per request. However, the projected API response and tool arguments are model-facing data and may be sent to the LLM provider configured for the session. Credential metadata and Registry files are local to the DSH profile, but this does not make API response data local-only.
+
+</details>
+
+<details>
+<summary><b>Where are configuration and audit logs stored?</b></summary>
+
+By default:
+
+```text
+$DSH_HOME/storages/dsh-api-kit/registry.json
+$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl
+```
+
+If `DSH_HOME` is not set, the implementation falls back to the DSH home directory (typically `~/.dsh`). Registry backups, damaged-file recovery artifacts, and audit retention are managed by the Host components.
+
+</details>
+
+## Development and verification
+
+This repository is an ESM package with DSH-independent Host/domain modules and a browser bundle. The available checks are:
 
 ```powershell
 pnpm test
 pnpm run check
 pnpm pack --dry-run
+git diff --check
 ```
 
-## Security boundary
+`pnpm test` runs the configuration, session, discovery, executor, SSRF, redaction, Registry, OpenAPI import, OAuth2, confirmation, transport, and client-contract regression tests. `pnpm run check` validates bundle metadata, exported entry points, Typert descriptors, tool registrations, import boundaries, and client UI guards. `pnpm pack --dry-run` verifies the package’s `files` allowlist and should include both README files, `CHANGELOG.md`, the bundle entries, and the selected regression tests.
 
-Write operations and OAuth2 remain disabled by default. A write can reach the network only when both the Operation and Kit allow it and a short-lived Host-approved confirmation matches the Session, Environment, target, request, and Registry fingerprints. The Host confirmation RPC supports approve/reject/cancel; unavailable approval answers fail closed. OAuth2 is limited to HTTPS Client Credentials with an Environment-allowlisted, DNS/IP-validated endpoint and no redirects. Authorization code, PKCE, refresh tokens, OIDC discovery, browser callbacks, arbitrary endpoints, file upload, SSE/WebSocket, implicit retries, and an independent MCP Server are not supported. Private access requires explicit matching CIDRs. This bundle is not an arbitrary-URL internet or intranet proxy.
+There is no dedicated browser smoke script in this repository. A release candidate should therefore be installed into an isolated DSH profile and checked manually in a real DSH Web process.
 
-## License
+## License and disclaimer
 
-[MIT](./LICENSE). This project is not affiliated with DeepSeek.
+[MIT](./LICENSE). This project is not affiliated with DeepSeek. Use production endpoints, credentials, and write policies only after reviewing your organization’s security and authorization requirements.
