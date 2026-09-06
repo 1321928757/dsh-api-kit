@@ -357,6 +357,17 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 
 ---
 
+### 2026-09-06 / Auth Profile management
+
+- **状态：已完成（真实浏览器验收待补）**。补齐 Auth Profile 从 Host/RPC 到设置页的生命周期管理：安全元数据 CRUD、启用/停用、引用保护、Host-only secret 设置/替换/删除，以及 Query API Key 和 OAuth2 风险提示。
+- **Host/RPC**：扩展 `lib/index.js`、`lib/typert.host.js` 和 Client descriptors，新增 `createAuthProfile`、`updateAuthProfile`、`deleteAuthProfile`、`setAuthSecret`、`unsetAuthSecret`；真实 secret 仍只经过 credentials adapter，安全视图不返回 `secretRef` 或 secret。
+- **安全边界**：新建 Profile 可由 Host 生成默认 credential reference；停用 Profile 不得新绑定或请求解析；Query API Key 继续默认关闭；OAuth2 保留 HTTPS、allowlist/DNS/IP、manual redirect、bounded response 和 cache 隔离约束。
+- **Client**：增加独立 Auth Profile 设置分组、类型化表单、凭据状态、不可回显 password 输入、删除凭据确认、删除引用保护和局部重试；Client 不直接 fetch、不执行连接测试、不显示 secret。
+- **测试与验收**：全量 `node --test test/*.test.mjs` `185/185` 通过；Client/Host/manifest/安全合同测试通过；`node scripts/check-manifest.mjs`、`pnpm pack --dry-run`、`git diff --check` 和 `openspec validate "auth-profile-management" --type change --strict` 通过。`3091` 隔离浏览器流程仍需实际启动新 bundle 后补做，未触碰 `3080`。
+- **范围限制**：保持单个 `secretRef` 对应一个 Auth Profile；企微多字段凭据由外部 credentials 服务封装，未新增多命名 secret 模型。
+
+---
+
 ### 2026-08-29 / T13
 
 - **状态：已完成（浏览器 UI 仍需手工/真实浏览器驱动验收）**。集中改进 `lib/client.js` 的设置页和输入栏 API Kit 选择器，不改变 T10/T12 Host 业务语义、Typert RPC 参数或安全边界。

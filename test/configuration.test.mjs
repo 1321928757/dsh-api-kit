@@ -149,4 +149,50 @@ test('registry write failure leaves configuration snapshot unchanged', async () 
   assert.equal(context.config.getDiagnostics().code, 'BACKUP_FAILED')
 })
 
+test('auth profile management supports generated refs, secret lifecycle, disabled guards and safe deletion', async () => {
+  const { config, secretValues } = await loadedSetup()
+  const created = await config.createAuthProfile({ id: 'wechat', name: 'WeCom API', type: 'api-key-query', queryName: 'key' })
+  assert.equal(created.id, 'wechat')
+  assert.equal(created.hasSecret, false)
+  assert.equal('secretRef' in created, false)
+  await config.setAuthSecret('wechat', 'wechat-secret')
+  assert.equal((await config.getAuthProfile('wechat')).hasSecret, true)
+  assert.equal(secretValues.get('DSH_API_KIT_AUTH_WECHAT'), 'wechat-secret')
+  await config.unsetAuthSecret('wechat')
+  assert.equal((await config.getAuthProfile('wechat')).hasSecret, false)
+  await config.updateAuthProfile('wechat', { allowQuery: true })
+  await config.setAuthSecret('wechat', 'wechat-secret-2')
+  assert.equal((await config.resolveAuthForRequest('wechat')).query.key, 'wechat-secret-2')
+  await config.updateAuthProfile('wechat', { enabled: false })
+  await assert.rejects(config.resolveAuthForRequest('wechat'), (error) => error.code === 'AUTH_PROFILE_DISABLED')
+  await config.createEnvironment({ id: 'dev', baseUrl: 'https://api.example.test' })
+  await assert.rejects(config.createServiceTarget({ id: 'disabled-target', name: 'Disabled', environmentIds: ['dev'], endpoints: { dev: { baseUrl: 'https://api.example.test' } }, authProfileIds: ['wechat'] }), (error) => error.code === 'AUTH_PROFILE_DISABLED')
+  await config.updateAuthProfile('wechat', { enabled: true })
+  await config.createServiceTarget({ id: 'target', name: 'Target', environmentIds: ['dev'], authProfileIds: ['wechat'] })
+  await assert.rejects(config.deleteAuthProfile('wechat'), (error) => error.code === 'AUTH_PROFILE_IN_USE' && error.detail.references.length > 0)
+})
+
+test('missing credential provider is reported separately from metadata CRUD', async () => {
+  const unavailable = {
+    available: false,
+    async describe() { throw Object.assign(new Error('Credential provider is unavailable'), { code: 'CREDENTIAL_PROVIDER_UNAVAILABLE' }) },
+    async resolve() { throw Object.assign(new Error('Credential provider is unavailable'), { code: 'CREDENTIAL_PROVIDER_UNAVAILABLE' }) },
+    async set() { throw Object.assign(new Error('Credential provider is unavailable'), { code: 'CREDENTIAL_PROVIDER_UNAVAILABLE' }) },
+    async unset() { throw Object.assign(new Error('Credential provider is unavailable'), { code: 'CREDENTIAL_PROVIDER_UNAVAILABLE' }) },
+  }
+  const isolated = await loadedSetup({ credentialAdapter: unavailable })
+  const profile = await isolated.config.createAuthProfile({ id: 'wecom-corpsecret', type: 'api-key-query', queryName: 'corpsecret', allowQuery: true })
+  assert.equal(profile.hasSecret, false)
+  await assert.rejects(isolated.config.setAuthSecret('wecom-corpsecret', 'not-recorded'), (error) => error.code === 'CREDENTIAL_PROVIDER_UNAVAILABLE')
+})
+
+test('auth profile secret writes do not mutate Registry or leak values in safe views', async () => {
+  const { config } = await loadedSetup()
+  await config.createAuthProfile({ id: 'bearer', type: 'bearer' })
+  await config.setAuthSecret('bearer', 'secret-value')
+  assert.doesNotMatch(JSON.stringify(config.getSnapshot()), /secret-value|DSH_API_KIT_AUTH_BEARER/)
+  assert.doesNotMatch(JSON.stringify(await config.listAuthProfiles()), /secret-value|dsh-api-kit\/auth\/bearer/)
+  assert.equal((await config.getAuthProfile('bearer')).hasSecret, true)
+})
+
 console.log('Configuration tests complete')

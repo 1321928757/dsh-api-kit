@@ -198,7 +198,7 @@ test('T15 resolves optional primitives with an accessible SVG fallback', () => {
 })
 
 test('T16 preserves RPC names, calls, package metadata, and no direct-network boundary', () => {
-  const methods = ['listKits', 'getKit', 'createKit', 'updateKit', 'deleteKit', 'addOperationsToKit', 'removeOperationsFromKit', 'listOperations', 'getOperation', 'createOperation', 'updateOperation', 'deleteOperation', 'setOperationEnabled', 'listServiceTargets', 'getServiceTarget', 'createServiceTarget', 'updateServiceTarget', 'deleteServiceTarget', 'listEnvironments', 'getEnvironment', 'createEnvironment', 'updateEnvironment', 'deleteEnvironment', 'listAuthProfiles', 'getAuthProfile', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation', 'previewOpenApiImport', 'confirmOpenApiImport']
+  const methods = ['listKits', 'getKit', 'createKit', 'updateKit', 'deleteKit', 'addOperationsToKit', 'removeOperationsFromKit', 'listOperations', 'getOperation', 'createOperation', 'updateOperation', 'deleteOperation', 'setOperationEnabled', 'listServiceTargets', 'getServiceTarget', 'createServiceTarget', 'updateServiceTarget', 'deleteServiceTarget', 'listEnvironments', 'getEnvironment', 'createEnvironment', 'updateEnvironment', 'deleteEnvironment', 'listAuthProfiles', 'getAuthProfile', 'createAuthProfile', 'updateAuthProfile', 'deleteAuthProfile', 'setAuthSecret', 'unsetAuthSecret', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation', 'previewOpenApiImport', 'confirmOpenApiImport']
   const rpc = client.match(/const RPC_METHODS = \[([\s\S]*?)\]/)?.[1] || ''
   for (const method of methods) assert.match(rpc, matchLiteral(`'${method}'`))
   assert.match(client, /const call = async \(name, args = \{\}\)/)
@@ -207,6 +207,15 @@ test('T16 preserves RPC names, calls, package metadata, and no direct-network bo
   assert.equal(packageJson.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'], '^0.1.1-rc.2')
   assert.equal(packageJson.peerDependenciesMeta?.['@deepseek-ai/dsh-client-ui-primitives']?.optional ?? true, true)
   assert.deepEqual(packageJson.dsh?.client?.inject, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation'])
+})
+
+test('Auth Profile management stays Host-only and exposes safe settings flows', () => {
+  for (const marker of ['createAuthProfile', 'updateAuthProfile', 'deleteAuthProfile', 'setAuthSecret', 'unsetAuthSecret', 'Auth Profile', 'authProfileForm', 'authProfileFormView', 'hasSecret', 'credentialSource', 'writable', 'api-key-query', '凭据可能进入 URL', 'allowQuery', 'oauth2-client-credentials', 'Token Endpoint', 'data-auth-profile-list', '删除凭据', 'secret、Authorization 和完整 token 不会展示']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /type: multiline \? undefined : options\.type/)
+  assert.doesNotMatch(client, /fetch\s*\(|new URL\s*\(/)
+  assert.doesNotMatch(client, /secretRef/)
+  assert.match(client, /credentialSource/)
+  assert.match(client, /writable/)
 })
 
 test('T13 provides keyboard focus and semantic status/error feedback', () => {

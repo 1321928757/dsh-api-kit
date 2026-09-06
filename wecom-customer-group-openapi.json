@@ -1,0 +1,322 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "企业微信客户群 API",
+    "version": "1.0.0",
+    "description": "包含企业微信获取 access_token 和获取客户群详情两个接口。corpsecret 与 access_token 通过 Query API Key Auth Profile 注入；corpid 是业务 Query 参数，不是 secret。"
+  },
+  "servers": [
+    {
+      "url": "https://qyapi.weixin.qq.com",
+      "description": "企业微信 API"
+    }
+  ],
+  "tags": [
+    {
+      "name": "身份认证",
+      "description": "获取企业微信 access_token"
+    },
+    {
+      "name": "客户群管理",
+      "description": "获取外部客户群详情"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "wecomCorpSecret": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "corpsecret",
+        "description": "企业微信自建应用 Secret。导入后绑定为 Query API Key Auth Profile，并开启 allowQuery。"
+      },
+      "wecomAccessToken": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "access_token",
+        "description": "企业微信 access_token。当前 API Kit 版本需要单独绑定一个 Query API Key Auth Profile；不会自动从 gettoken 响应提取并刷新。"
+      }
+    },
+    "schemas": {
+      "WeComErrorFields": {
+        "type": "object",
+        "properties": {
+          "errcode": {
+            "type": "integer",
+            "description": "返回码；0 表示成功"
+          },
+          "errmsg": {
+            "type": "string",
+            "description": "返回码提示语"
+          }
+        },
+        "required": [
+          "errcode",
+          "errmsg"
+        ],
+        "additionalProperties": true
+      },
+      "AccessTokenResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WeComErrorFields"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "access_token": {
+                "type": "string",
+                "description": "获取到的凭证；有效期通常为 7200 秒"
+              },
+              "expires_in": {
+                "type": "integer",
+                "format": "int32",
+                "description": "凭证有效时间，单位为秒"
+              }
+            }
+          }
+        ]
+      },
+      "GroupChatMemberInvitor": {
+        "type": "object",
+        "properties": {
+          "userid": {
+            "type": "string",
+            "description": "邀请者的企业微信 userid"
+          }
+        },
+        "additionalProperties": true
+      },
+      "GroupChatMember": {
+        "type": "object",
+        "properties": {
+          "userid": {
+            "type": "string",
+            "description": "群成员 ID"
+          },
+          "type": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "description": "成员类型：1 企业成员，2 外部联系人"
+          },
+          "unionid": {
+            "type": "string",
+            "description": "外部联系人的微信 unionid；可能不返回"
+          },
+          "join_time": {
+            "type": "integer",
+            "format": "int64",
+            "description": "入群时间，Unix 时间戳"
+          },
+          "join_scene": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "description": "入群方式：1 直接邀请，2 邀请链接，3 扫描群二维码"
+          },
+          "invitor": {
+            "$ref": "#/components/schemas/GroupChatMemberInvitor"
+          },
+          "group_nickname": {
+            "type": "string",
+            "description": "成员在群里的昵称"
+          },
+          "name": {
+            "type": "string",
+            "description": "成员名称；need_name=1 时返回"
+          }
+        },
+        "required": [
+          "userid",
+          "type",
+          "join_time",
+          "join_scene"
+        ],
+        "additionalProperties": true
+      },
+      "GroupChatAdmin": {
+        "type": "object",
+        "properties": {
+          "userid": {
+            "type": "string",
+            "description": "群管理员 userid"
+          }
+        },
+        "required": [
+          "userid"
+        ],
+        "additionalProperties": true
+      },
+      "GroupChat": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "description": "客户群 ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "群名"
+          },
+          "owner": {
+            "type": "string",
+            "description": "群主 ID"
+          },
+          "create_time": {
+            "type": "integer",
+            "format": "int64",
+            "description": "群创建时间，Unix 时间戳"
+          },
+          "notice": {
+            "type": "string",
+            "description": "群公告"
+          },
+          "member_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupChatMember"
+            }
+          },
+          "admin_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupChatAdmin"
+            }
+          },
+          "member_version": {
+            "type": "string",
+            "description": "当前群成员版本号"
+          }
+        },
+        "required": [
+          "chat_id",
+          "name",
+          "owner",
+          "create_time",
+          "member_list",
+          "admin_list",
+          "member_version"
+        ],
+        "additionalProperties": true
+      },
+      "GroupChatDetailResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WeComErrorFields"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "group_chat": {
+                "$ref": "#/components/schemas/GroupChat"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/cgi-bin/gettoken": {
+      "get": {
+        "operationId": "wecomGetAccessToken",
+        "summary": "获取 access_token",
+        "description": "企业微信自建应用服务端 API。corpsecret 由 Auth Profile 注入，corpid 作为 Query 参数传入。请缓存 access_token，避免频繁调用。",
+        "tags": [
+          "身份认证"
+        ],
+        "security": [
+          {
+            "wecomCorpSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "corpid",
+            "in": "query",
+            "required": true,
+            "description": "企业 ID（CorpID），不是 secret。",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "企业微信返回 access_token 或错误码",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cgi-bin/externalcontact/groupchat/get": {
+      "post": {
+        "operationId": "wecomGetCustomerGroupDetail",
+        "summary": "获取客户群详情",
+        "description": "通过客户群 ID 获取群名、群成员、入群时间和入群方式。access_token 由 Auth Profile 注入。该接口是 POST，在 API Kit 中需要启用写入策略并走 Host 确认流程。",
+        "tags": [
+          "客户群管理"
+        ],
+        "security": [
+          {
+            "wecomAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chat_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "客户群 ID"
+                  },
+                  "need_name": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 0,
+                    "description": "是否返回群成员名称：0 不返回，1 返回；默认 0"
+                  }
+                },
+                "required": [
+                  "chat_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "企业微信返回客户群详情或错误码",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupChatDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

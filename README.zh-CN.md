@@ -21,7 +21,7 @@
 - **Environment 与 Service Target 分离：** Environment 表示 `demo`、`dev` 或生产等逻辑阶段；Service Target 表示逻辑业务服务，并为每个绑定的 Environment 保存独立 endpoint 和网络策略。
 - **会话级启用：** 会话选择保存在 Host 内存中，以权威 session ID 为键。当前激活的所有 Kit 必须共享所选 Environment。
 - **固定目标调用：** Agent 只使用稳定 `operationId`、已声明参数、登记的 Service Target endpoint 和 Operation path。模型不能提供任意 URL、host、代理、重定向策略、session ID 或凭据值。
-- **Host-only 认证：** 支持无认证、Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials 元数据。secret 只在请求执行时由 Host 解析。
+- **Host-only 认证：** 设置页可创建、编辑、启用/停用、绑定和删除未被引用的 Auth Profile，支持无认证、Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials。secret 只能通过 Host credentials 流程设置、替换或删除，并且只在请求执行时由 Host 解析。Query API Key 明确标记为可能进入 URL，默认禁止执行。
 - **响应治理与审计：** 响应会进行有界处理和保守脱敏；调用和策略拒绝写入本地白名单 JSONL 审计文件。
 - **可访问 Web UI：** 设置页和会话选择器使用 DSH 主题令牌，支持键盘/焦点管理、语义化状态反馈、响应式布局、触控尺寸主控件和 reduced-motion。
 
@@ -112,7 +112,7 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 1. **创建 Environment。** 在 **设置 → API Kit → 连接配置** 中添加 `demo` 等 ID。除非确有需要，不要让生产 Environment 默认允许 Agent 使用。
 2. **创建 Service Target。** 将它绑定到一个或多个 Environment，并为每个绑定项配置一个 endpoint，例如 `demo → https://api.example.test`。endpoint host 会自动加入 host 白名单；请继续检查额外的 `allowedHosts`、超时和响应限制。
 3. **仅在必要时配置私网策略。** 对内网 endpoint，开启允许私网访问，并加入匹配的 `allowedCidrs`，例如 `172.31.33.216/32`。仅设置 hostname 白名单不会授予私网访问权限。
-4. **按需绑定 Auth Profile。** 如果 Host/Registry 中已经有 Auth Profile，可按需选择无认证、Bearer、Basic、API Key 或 OAuth2 Client Credentials。Registry 只保存凭据引用；实际值通过 DSH Host credentials 服务配置。当前 Web 设置页只展示可安全用于绑定的认证元数据，不展示 secret 值，也不提供 secret 编辑入口。
+4. **管理或绑定 Auth Profile。** 在 **设置 → API Kit → Auth Profile** 中创建/编辑无认证、Bearer、Basic、Header/Query API Key 或 OAuth2 Client Credentials 的安全元数据，可启用/停用、删除未被引用的 Profile，并通过 Host-only 凭据流程设置、替换或删除 secret。Registry 只保存凭据引用；列表仅展示 `hasSecret`、凭据来源和可写状态，不展示 secret 或 `secretRef`。Query API Key 会明确提示凭据可能进入 URL，默认禁止执行。
 5. **导入 API 定义。** 粘贴 OpenAPI 3.0/3.1 或 Swagger 2.0 JSON，点击 **校验并预览**，选择 Tag 以及已存在的 Service Target/Environment/Auth Profile，处理冲突后点击 **确认并导入**。`servers[].url` 与 Swagger `host/basePath/schemes` 只是展示候选，不会自动变成可信调用目标。
 6. **激活会话范围。** 在会话输入栏打开 **API 套件**，选择一个或多个已启用 Kit，再选择兼容的共同 Environment。
 7. **让 Agent 使用固定流程。** 它应先发现 Operation，再描述必需参数，最后按 `operationId` 调用。建议先使用只读 GET/HEAD；上游支持时，在请求中主动加入筛选、分页或 `LIMIT`。

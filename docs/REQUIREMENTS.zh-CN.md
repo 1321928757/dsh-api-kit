@@ -325,20 +325,26 @@ baseUrl 必须由用户显式登记，不能由模型传入。拼接时应正确
 
 #### FR-AUTH-001 认证方式
 
-MVP 支持：
+系统支持：
 
+- 无认证；
 - Bearer Token；
 - API Key Header；
-- API Key Query（默认关闭并显示风险提示）；
-- Basic Auth。
+- API Key Query（默认关闭并显示“凭据可能进入 URL”的风险提示）；
+- Basic Auth；
+- OAuth2 Client Credentials（仅 HTTPS、固定 token endpoint、Host allowlist/DNS/IP 校验和受限 client authentication method）。
 
-后续支持 OAuth2 Client Credentials、自动刷新和企业 SSO。
+authorization-code/PKCE/OIDC discovery、refresh token 持久化、浏览器回调、mTLS 和任意 token endpoint 不在当前范围内。
 
-#### FR-AUTH-002 密钥引用
+#### FR-AUTH-002 Auth Profile 生命周期与密钥引用
+
+用户可以在设置页创建、编辑、启用/停用和删除未被引用的 Auth Profile。Registry 只保存 `secretRef` 或凭据 ID，不保存真实 secret；没有凭据服务时仍可维护非敏感元数据，但 secret 写入和请求解析必须 fail closed。真实 secret 只通过 Host credentials 服务按请求执行或显式凭据维护操作读取。
+
+#### FR-AUTH-003 安全视图与脱敏
 
 API 定义只保存 `secretRef` 或凭据 ID，不保存真实 secret。真实 secret 只在 Host 请求执行时读取并组装。
 
-#### FR-AUTH-003 脱敏
+#### FR-AUTH-004 脱敏
 
 以下内容禁止进入浏览器、模型上下文和普通日志：
 
@@ -349,7 +355,7 @@ API 定义只保存 `secretRef` 或凭据 ID，不保存真实 secret。真实 s
 - client secret；
 - API Key 完整值。
 
-#### FR-AUTH-004 认证测试
+#### FR-AUTH-005 认证测试
 
 测试认证时只返回成功/失败、HTTP 状态、耗时和脱敏错误摘要，不返回响应中的认证 Header 或 Cookie。
 

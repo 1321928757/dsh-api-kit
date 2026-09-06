@@ -45,6 +45,7 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(typert, /'createOperation'/)
   assert.match(typert, /'createServiceTarget'/)
   assert.match(typert, /'createEnvironment'/)
+  for (const name of ['createAuthProfile', 'updateAuthProfile', 'deleteAuthProfile', 'setAuthSecret', 'unsetAuthSecret']) assert.match(typert, new RegExp(name))
   assert.match(typert, /'getSessionActivation'/)
   assert.match(typert, /'setSessionActivation'/)
   assert.match(typert, /'clearSessionActivation'/)
@@ -95,7 +96,7 @@ test('T14 exposes OAuth and write-confirmation contracts in Typert and model too
 test('T07 registers fixed Agent discovery tools without HTTP execution', async () => {
   const host = await read('lib/index.js')
   const tools = await read('lib/agent-tools.js')
-  assert.match(host, /export const inject = \['tools', 'systemPrompt'\]/)
+  assert.match(host, /export const inject = \['tools', 'systemPrompt', 'credentials'\]/)
   assert.match(host, /createApiKitAgentTools/)
   assert.match(host, /ctx\.tools\.register/)
   for (const name of ['api_kits', 'api_operations', 'api_describe']) assert.match(tools, new RegExp(`name: '${name}'`))
@@ -114,7 +115,7 @@ test('T11 ships a bounded DSH-independent OpenAPI JSON importer', async () => {
 test('T10 registers a per-assembly dynamic runtime context', async () => {
   const host = await read('lib/index.js')
   const context = await read('lib/runtime-context.js')
-  assert.match(host, /export const inject = \['tools', 'systemPrompt'\]/)
+  assert.match(host, /export const inject = \['tools', 'systemPrompt', 'credentials'\]/)
   assert.match(host, /registerApiKitRuntimeContext/)
   assert.match(context, /systemPrompt\.context/)
   assert.match(host, /systemPrompt/)

@@ -44,6 +44,13 @@
 - Added explicit JSON field validation that preserves drafts, actionable import/preview error guidance, duplicate-action guards, and consistent busy/success feedback.
 - Updated Client styling to use the inspected DSH light/dark tokens, responsive 720px/520px layouts, viewport-bounded picker behavior, 44px controls, long-text wrapping, and reduced-motion support.
 
+## Unreleased / Auth Profile management
+
+- Added Auth Profile lifecycle RPCs for safe metadata CRUD and Host-only secret set/unset operations.
+- Added a dedicated settings Auth Profile section with type-aware forms, safe credential status, enable/disable, deletion protection, Query API Key URL-risk guidance, and OAuth2 metadata fields.
+- Auth Profile creation may use a generated Host credential reference; real secret values never enter the Registry, safe views, browser text, Agent context, or ordinary logs.
+- Disabled Auth Profiles cannot be newly bound or resolved for requests; Service Target/Operation references and deletion remain Host-validated.
+
 ## Unreleased / T14
 
 - Added Host-only OAuth2 Client Credentials profiles with HTTPS endpoint validation, Environment-bound DNS/IP pinning, manual redirect denial, bounded response parsing, request-time credential resolution, cache isolation, single-flight refresh, and safe OAuth metadata views.
