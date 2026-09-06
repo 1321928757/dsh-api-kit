@@ -6,6 +6,26 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const client = await readFile(path.join(root, 'lib/client.js'), 'utf8')
+const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')
+const matchLiteral = (value) => new RegExp(escapeRegExp(value))
+
+function extractFunctionBody(name) {
+  const start = client.indexOf(`function ${name}(`)
+  assert.notEqual(start, -1, `missing ${name}`)
+  const bodyStart = client.indexOf('{', start)
+  let depth = 0
+  for (let index = bodyStart; index < client.length; index += 1) {
+    if (client[index] === '{') depth += 1
+    if (client[index] === '}') {
+      depth -= 1
+      if (depth === 0) return client.slice(start, index + 1)
+    }
+  }
+  assert.fail(`unterminated ${name}`)
+}
+
 
 test('T13 retains the inspected Client slots and JSON-only boundary', () => {
   assert.match(client, /conversation\.input\.left/)
@@ -53,7 +73,8 @@ test('UI-02 explains session scope and common environment diagnostics', () => {
   assert.match(client, /selectedKitNames/)
   assert.match(client, /draftScope\.selectedKitCount/)
   assert.match(client, /draftScope\.known && draftScope\.ids\.length === 0/)
-  assert.match(client, /aria-label': '修改当前会话的 API 套件和环境选择'/)
+  assert.match(client, /scopeAccessibleName\(selectedScope, \{ loading, invalid: selectedIsInvalid \}\)/)
+  assert.match(client, /title: scopeTitle, 'aria-label': scopeAriaLabel/)
   assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
 })
 
@@ -126,22 +147,66 @@ test('UI-06 groups Operation editing and protects dirty/write-risk saves', () =>
   assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
 })
 
-test('T14 aligns the session picker and action buttons with DSH controls', () => {
-  assert.match(client, /dsh-api-kit-picker-button\{height:auto;min-height:44px/)
-  assert.match(client, /background:var\(--dsw-alias-bg-input/)
-  assert.match(client, /button-primary-fill/)
-  assert.match(client, /button-primary-hover/)
-  assert.match(client, /label-primary-foreground/)
-  assert.match(client, /dsh-api-kit-button\.primary:hover:not\(:disabled\)/)
-  assert.match(client, /dsh-api-kit-button\.danger:hover:not\(:disabled\)/)
-  assert.match(client, /color:var\(--dsw-alias-label-secondary\);font-size:12px/)
-  assert.match(client, /border-color:transparent.*background:var\(--dsw-alias-interactive-bg-hover\)/)
-  assert.match(client, /dsh-api-kit-popover\{.*width:min\(360px/)
-   assert.match(client, /--dsw-alias-border-l2/)
-  assert.match(client, /background:var\(--dsw-specific-menu/)
-  assert.match(client, /dsh-api-kit-import-options\{display:grid;grid-template-columns:repeat\(2/)
-  assert.match(client, /dsh-api-kit-import-heading/)
-  assert.doesNotMatch(client, /\.dsh-api-kit-button\.primary\{background:var\(--dsw-alias-brand-primary\);color:var\(--dsw-alias-label-primary\)/)
+test('T14 uses the compact semantic session picker contract', () => {
+  for (const marker of ['dsh-api-kit-picker-button', 'dsh-api-kit-picker-summary', 'dsh-api-kit-picker-chevron', 'data-scope-summary', 'is-active', 'is-expanded', 'is-invalid', 'min-width:0', 'white-space:nowrap', 'text-overflow:ellipsis', 'min-height:44px', 'prefers-reduced-motion:reduce']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /title: scopeTitle, 'aria-label': scopeAriaLabel/)
+  assert.match(client, /ref: triggerRef, type: 'button', className: 'dsh-api-kit-button dsh-api-kit-picker-button'/)
+  assert.match(client, /'aria-haspopup': 'dialog'/)
+  assert.match(client, /dsh-api-kit-picker-chip/)
+  assert.match(client, /scopeIcon\('api', 'dsh-api-kit-picker-icon'\)/)
+  assert.match(client, /scopeIcon\('chevron', 'dsh-api-kit-picker-chevron'\)/)
+  assert.match(client, /data-dsh-api-kit-icon-source.*source/)
+  assert.match(client, /compactScopeSummary\(selectedScope, \{ loading, invalid: selectedIsInvalid \}\)/)
+  assert.match(client, /transition:background-color \.18s ease,color \.18s ease,box-shadow \.18s ease/)
+  assert.match(client, /:hover:not\(:disabled\).*interactive-bg-hover/)
+  assert.match(client, /\.dsh-api-kit-picker \.dsh-api-kit-picker-button:hover:not\(:disabled\),\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-active,\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-expanded\{background:transparent!important/)
+  assert.match(client, /\.dsh-api-kit-picker \.dsh-api-kit-picker-button:hover:not\(:disabled\) \.dsh-api-kit-picker-chip,\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-active \.dsh-api-kit-picker-chip,\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-expanded \.dsh-api-kit-picker-chip\{background:var\(--dsw-alias-interactive-bg-hover\)!important/)
+  assert.doesNotMatch(client, /\.dsh-api-kit-picker \.dsh-api-kit-picker-button:hover:not\(:disabled\)\{background:var\(--dsw-alias-interactive-bg-hover\)!important/)
+  assert.doesNotMatch(client, /\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-active,\.dsh-api-kit-picker \.dsh-api-kit-picker-button\.is-expanded\{background:var\(--dsw-alias-interactive-bg-active/)
+  assert.match(client, /:focus-visible\{outline:0;box-shadow:/)
+  assert.match(client, /is-expanded \.dsh-api-kit-picker-chevron\{transform:rotate\(180deg\)\}/)
+  assert.match(client, /@media\(prefers-reduced-motion:reduce\)/)
+})
+
+test('UI-15 keeps scope summaries pure and vocabulary/status markers stable', () => {
+  const compact = extractFunctionBody('compactScopeSummary')
+  const full = extractFunctionBody('fullScopeText')
+  const title = extractFunctionBody('scopeTitleText')
+  const accessible = extractFunctionBody('scopeAccessibleName')
+  for (const body of [compact, full, title, accessible]) assert.doesNotMatch(body, /set[A-Z]|useState|api\[|fetch\s*\(/)
+  assert.match(client, /function compactScopeSummary\(scope, state = \{\}\)/)
+  assert.match(client, /function fullScopeText\(scope\)/)
+  assert.match(client, /function scopeTitleText\(scope, state = \{\}\)/)
+  assert.match(client, /function scopeAccessibleName\(scope, state = \{\}\)/)
+  for (const marker of ['API 套件', '未选择 API 套件', '环境：', '生产环境', '当前选择失效', '正在加载', '需要修复', '当前会话 API 套件：', '点击修改选择']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /selectedEnvironmentIsProduction/)
+  assert.match(client, /state\.loading \? '正在加载'/)
+  assert.match(client, /state\.invalid \|\| scope\?\.unavailable/)
+})
+
+test('T15 resolves optional primitives with an accessible SVG fallback', () => {
+  assert.match(client, /require\('@deepseek-ai\/dsh-client-ui-primitives'\)/)
+  assert.match(client, /IconApiOutline14/)
+  assert.match(client, /IconChevronDownOutline14/)
+  assert.match(client, /function fallbackIcon\(kind, className\)/)
+  assert.match(client, /viewBox: '0 0 16 16'/)
+  assert.match(client, /stroke: 'currentColor'/)
+  assert.match(client, /strokeWidth: 1\.4/)
+  assert.match(client, /'aria-hidden': true, focusable: false/)
+  assert.match(client, /function iconComponent\(value\)/)
+  assert.match(client, /Primitive \? React\.createElement\(Primitive/)
+})
+
+test('T16 preserves RPC names, calls, package metadata, and no direct-network boundary', () => {
+  const methods = ['listKits', 'getKit', 'createKit', 'updateKit', 'deleteKit', 'addOperationsToKit', 'removeOperationsFromKit', 'listOperations', 'getOperation', 'createOperation', 'updateOperation', 'deleteOperation', 'setOperationEnabled', 'listServiceTargets', 'getServiceTarget', 'createServiceTarget', 'updateServiceTarget', 'deleteServiceTarget', 'listEnvironments', 'getEnvironment', 'createEnvironment', 'updateEnvironment', 'deleteEnvironment', 'listAuthProfiles', 'getAuthProfile', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation', 'previewOpenApiImport', 'confirmOpenApiImport']
+  const rpc = client.match(/const RPC_METHODS = \[([\s\S]*?)\]/)?.[1] || ''
+  for (const method of methods) assert.match(rpc, matchLiteral(`'${method}'`))
+  assert.match(client, /const call = async \(name, args = \{\}\)/)
+  assert.match(client, /api\[name\]\(\.\.\.parameters\)/)
+  assert.doesNotMatch(client, /fetch\s*\(|new URL\s*\(|window\.location|webServer|innerHTML|dangerouslySetInnerHTML/)
+  assert.equal(packageJson.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'], '^0.1.1-rc.2')
+  assert.equal(packageJson.peerDependenciesMeta?.['@deepseek-ai/dsh-client-ui-primitives']?.optional ?? true, true)
+  assert.deepEqual(packageJson.dsh?.client?.inject, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation'])
 })
 
 test('T13 provides keyboard focus and semantic status/error feedback', () => {
