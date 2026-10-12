@@ -46,11 +46,15 @@ test('environment rejects unsafe, credential-bearing, query-bearing and privileg
   }
 })
 
-test('private/local environments require explicit opt-in and keep the distinction for T09', () => {
-  assert.throws(() => validateEnvironmentInput({ baseUrl: 'http://127.0.0.1:8080' }), (error) => error.code === 'PRIVATE_HOST_REQUIRES_OPT_IN')
-  const environment = validateEnvironmentInput({ baseUrl: 'http://127.0.0.1:8080', allowPrivateNetwork: true })
-  assert.equal(environment.allowPrivateNetwork, true)
-  assert.equal(environment.allowedHosts[0], '127.0.0.1')
+test('private API host configuration needs no retired opt-in flags', () => {
+  const environment = validateEnvironmentInput({ baseUrl: 'http://10.20.30.40:8080' })
+  assert.equal(environment.allowedHosts[0], '10.20.30.40')
+  assert.equal(Object.hasOwn(environment, 'allowPrivateNetwork'), false)
+  assert.equal(Object.hasOwn(environment, 'allowedCidrs'), false)
+  const ignoredLegacyControls = validateEnvironmentInput({ baseUrl: 'https://api.example.test', allowPrivateNetwork: false, allowedCidrs: ['invalid legacy value'] })
+  assert.equal(ignoredLegacyControls.baseUrl, 'https://api.example.test')
+  assert.equal(Object.hasOwn(ignoredLegacyControls, 'allowPrivateNetwork'), false)
+  assert.equal(Object.hasOwn(ignoredLegacyControls, 'allowedCidrs'), false)
 })
 
 test('environment rejects malformed host lists and allows explicit non-standard port opt-in', () => {
@@ -61,16 +65,11 @@ test('environment rejects malformed host lists and allows explicit non-standard 
   assert.equal(environment.allowPrivilegedPort, true)
 })
 
-test('environment validates and normalizes explicit private CIDR allowlists', () => {
-  const environment = validateEnvironmentInput({
-    baseUrl: 'http://10.1.2.3:8080',
-    allowPrivateNetwork: true,
-    allowPrivilegedPort: true,
-    allowedCidrs: ['10.0.0.1/8', 'FC00::1/7'],
-  })
-  assert.deepEqual(environment.allowedCidrs, ['10.0.0.1/8', 'FC00::1/7'])
-  assert.throws(() => validateEnvironmentInput({ baseUrl: 'https://api.example.test', allowedCidrs: ['not-cidr'] }), (error) => error.code === 'INVALID_CIDR')
-  assert.throws(() => validateEnvironmentInput({ baseUrl: 'https://api.example.test', allowedCidrs: '10.0.0.0/8' }), (error) => error.code === 'INVALID_CIDR_LIST')
+test('legacy private CIDR fields are discarded during endpoint normalization', () => {
+  const endpoint = validateEnvironmentInput({ baseUrl: 'http://10.1.2.3:8080', allowPrivateNetwork: true, allowedCidrs: ['10.0.0.1/8'] })
+  assert.equal(endpoint.baseUrl, 'http://10.1.2.3:8080')
+  assert.equal(Object.hasOwn(endpoint, 'allowedCidrs'), false)
+  assert.equal(Object.hasOwn(endpoint, 'allowPrivateNetwork'), false)
 })
 
 console.log('Environment tests complete')

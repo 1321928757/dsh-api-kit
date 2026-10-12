@@ -302,9 +302,9 @@ Host 负责 Registry、文件、凭据、HTTP 请求、SSRF、策略、Agent Too
 
 ### 2026-08-27 / T09
 
-- **状态：已完成**。新增 `lib/ip.js`、`lib/ssrf.js`、`lib/redaction.js`、`lib/audit-log.js`；扩展 Environment `allowedCidrs` 和 Operation 响应治理/脱敏策略；新增 pinned Node HTTP/HTTPS transport。
+- **状态：已完成**。新增 `lib/ip.js`、`lib/ssrf.js`、`lib/redaction.js`、`lib/audit-log.js`；扩展 Environment 目标 host 校验和 Operation 响应治理/脱敏策略；新增 pinned Node HTTP/HTTPS transport。
 - **安全修订**：修复 Host 默认 fs 服务与审计 sink 契约不兼容、截断 JSON 原文脱敏旁路、IPv4-translated/NAT64/IPv4-compatible/6to4 地址分类、注入 transport 跳过 DNS 校验、非默认端口 Host 头和审计前置拒绝丢失等问题；pinned transport 强制 `Accept-Encoding: identity`，避免压缩响应在有界读取前膨胀。
-- **SSRF 与重定向**：每次调用对 DNS 全部返回地址分类校验，覆盖 IPv4、IPv6、IPv4-mapped IPv6、loopback、link-local、metadata、RFC1918、ULA、CGNAT、保留/文档网段；私网必须同时配置 `allowPrivateNetwork` 和匹配 CIDR。生产 transport 连接已校验固定 IP，保留登记 hostname 的 Host/SNI，不使用代理、隐式重试或自动重定向。
+- **SSRF 与重定向**：每次调用对 DNS 全部返回地址分类校验，覆盖 IPv4、IPv6、IPv4-mapped IPv6、loopback、link-local、metadata、RFC1918、ULA、CGNAT、组播和保留/文档网段；已登记 hostname 解析到 RFC1918、ULA 或 CGNAT 时允许，不再要求每个用户配置 CIDR 豁免。loopback、link-local、metadata、组播及保留地址仍强制拒绝。生产 transport 连接已校验固定 IP，保留登记 hostname 的 Host/SNI，不使用代理、隐式重试或自动重定向。
 - **响应治理**：JSON 成功及错误体在输出前递归替换敏感字段，再按深度、数组、字符串、对象数量和总字节治理；不返回 Response Header 或 `Location`。
 - **审计**：Host-only JSONL sink 写入 `$DSH_HOME/storages/dsh-api-kit/audit/audit-YYYY-MM-DD.jsonl`，字段白名单、默认 14 日懒清理、串行 append；调用拒绝和网络尝试均走 executor finally，审计写失败不影响工具结果。
 - **测试与验收结果**：新增 SSRF 15 项、Redaction 4 项、Audit 3 项；全量 `pnpm test` 94/94 通过；`pnpm run check`、`pnpm pack --dry-run` 和 `git diff --check` 通过。

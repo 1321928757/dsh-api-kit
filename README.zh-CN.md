@@ -55,20 +55,28 @@ api_write_prepare → 人工确认 → api_write_execute
 
 ## 环境要求与兼容性
 
-- 需要安装支持 **Web Profile bundle** 加载器的 DSH，以及能够加载 ESM 包的 Node.js 运行时。
-- DSH 在安装时提供可用的 peer 集成：`@deepseek-ai/cordis`、`@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-conversation`、`@deepseek-ai/dsh-client-ui-primitives` 和 `react`。本包将它们声明为可选 peer dependencies。
-- 插件使用 DSH Web Client slots `conversation.input.left` 和 `settings.section`，并在 Host 侧提供 `apiKitConfig` 服务和 `api-kit` 命名空间的 Typert 描述。
-- 当前包只声明 Web bundle，不承诺兼容非 Web Profile、所有 OpenAPI 厂商扩展或所有 DSH runtime 版本。生产发布前请核对目标 DSH 版本，并用 Inspect 确认当前 slots。
-- OAuth2 需要 Host 凭据服务和安全 HTTP transport。访问私网 endpoint 需要显式开启并配置匹配 CIDR。
+- 支持范围为 DSH `>=0.2.0-rc.2 <0.3.0` 和 Node.js `>=20`；插件使用 Host Typert 严格 JSON codecs、Host credentials、Cordis 4.0.4 系列，以及 Web Profile bundle 加载器。
+- Client bundle 只需 React 和可选 `@deepseek-ai/dsh-client-ui-primitives` peer；Client Cordis 服务通过插件 `inject` 声明 `remote` 和 `slots`。
+- 插件使用 DSH Web Client slots `conversation.input.left`（session scope）和 `settings.section`（root scope），并在 Host 侧提供 `apiKitConfig` 服务和 `api-kit` 命名空间的 Typert 描述。
+- 当前包只声明 Web bundle，不承诺兼容非 Web Profile、所有 OpenAPI 厂商扩展或 DSH 0.3+。生产发布前请在隔离 profile 中验证目标 DSH 发行版。
+- OAuth2 需要 Host 凭据服务和安全 HTTP transport。登记的内网 API 地址可直接使用，但本机、link-local、metadata 和保留地址仍会被拦截。
+
+## DSH 0.2 升级说明
+
+- 升级插件时不会改写 Registry 中已有的 `secretRef`。旧版 `dsh-api-kit/auth/<id>` sentinel 只在 Host credentials 边界适配；不符合新引用语法的历史显式引用仍保留在 Registry，但相关操作会 fail closed，需用户主动修正。
+- 新建 Auth Profile 使用 `DSH_API_KIT_AUTH_V2_<hash>` 默认引用，避免标点和大小写归一化碰撞。显式引用保持原值。
+- 历史默认引用碰撞会报告 Profile ID 和共享引用；允许编辑无关元数据，用户也可为其中一个 Profile 指定有效且唯一的新引用来解决冲突。插件不会推测共享 secret 的归属。
+- 升级前备份 DSH profile，并保留旧包用于回滚。回滚时不得删除或重命名任一版本创建的凭据。
+- 发布前使用隔离 profile 验证 Host 启动、两个 Web slot、设置页到 RPC 的流程和凭据状态；不要对承载用户会话的 profile 执行 smoke。
 
 ## 安装、更新与卸载
 
 ### 从 GitHub 安装
 
-当前仓库版本为 `0.1.0`：
+当前仓库版本为 `0.1.1`：
 
 ```powershell
-dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.0
+dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.1
 ```
 
 安装或更新后，请重启已有的 `dsh web` 进程，让新 bundle 进入 Web boot graph。命令会安装到 `web` profile；测试时请使用隔离 profile。
@@ -102,7 +110,7 @@ dsh plugin --profile web remove dsh-api-kit
 ```powershell
 pnpm pack
 # 如果 profile 位于另一个盘符，请将生成的 tgz 复制到方便访问的位置。
-dsh plugin --profile demo add C:\path\to\dsh-api-kit-0.1.0.tgz
+dsh plugin --profile demo add C:\path\to\dsh-api-kit-0.1.1.tgz
 dsh --profile demo --dump-config | findstr dsh-api-kit
 ```
 
@@ -111,8 +119,8 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 ## 快速开始
 
 1. **创建 Environment。** 在 **设置 → API Kit → 连接配置** 中添加 `demo` 等 ID。除非确有需要，不要让生产 Environment 默认允许 Agent 使用。
-2. **创建 Service Target。** 将它绑定到一个或多个 Environment，并为每个绑定项配置一个 endpoint，例如 `demo → https://api.example.test`。endpoint host 会自动加入 host 白名单；请继续检查额外的 `allowedHosts`、超时和响应限制。
-3. **仅在必要时配置私网策略。** 对内网 endpoint，开启允许私网访问，并加入匹配的 `allowedCidrs`，例如 `172.31.33.216/32`。仅设置 hostname 白名单不会授予私网访问权限。
+2. **创建 Service Target。** 将它绑定到一个或多个 Environment，并为每个绑定项配置一个 endpoint，例如 `demo → https://api.example.test`。endpoint host 会自动进入固定主机校验；请检查超时和响应限制。
+3. **直接登记内网 API 主机。** 对已加入 Environment/Service Target 主机白名单的 hostname，RFC1918、IPv6 ULA 和 CGNAT DNS 地址可直接访问，不需要额外开关或 CIDR。loopback、link-local、metadata、组播和保留地址仍会被拦截。
 4. **管理或绑定 Auth Profile。** 在 **设置 → API Kit → Auth Profile** 中创建/编辑无认证、Bearer、Basic、Header/Query API Key 或 OAuth2 Client Credentials 的安全元数据，可启用/停用、删除未被引用的 Profile，并通过 Host-only 凭据流程设置、替换或删除 secret。Registry 只保存凭据引用；列表仅展示 `hasSecret`、凭据来源和可写状态，不展示 secret 或 `secretRef`。Query API Key 会明确提示凭据可能进入 URL，默认禁止执行。
 5. **导入 API 定义。** 粘贴 OpenAPI 3.0/3.1 或 Swagger 2.0 JSON，点击 **校验并预览**，选择 Tag 以及已存在的 Service Target/Environment/Auth Profile，处理冲突后点击 **确认并导入**。`servers[].url` 与 Swagger `host/basePath/schemes` 只是展示候选，不会自动变成可信调用目标。
 6. **激活会话范围。** 在会话输入栏打开 **API 套件**，选择一个或多个已启用 Kit，再选择兼容的共同 Environment。
@@ -126,14 +134,14 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 设置页主要包含三个区域：
 
 - **OpenAPI 导入：** 粘贴 JSON，预览有界元数据和诊断，选择 Tag 与绑定，查看冲突并显式确认一次原子导入；
-- **连接配置：** 维护逻辑 Environment、按 Environment 保存 endpoint 的 Service Target、host/CIDR 白名单、私网开关、超时和响应限制；查看可用于绑定的 Auth Profile 安全元数据，但不暴露 secret；
+- **连接配置：** 维护逻辑 Environment、按 Environment 保存 endpoint 的 Service Target、登记主机校验、超时和响应限制；查看可用于绑定的 Auth Profile 安全元数据，但不暴露 secret；
 - **API Kit 工作台：** 创建空 Kit，查看其中的 Operation，启停 Operation，编辑策略；删除被引用对象前先解除关联。
 
 无效 JSON 会在字段附近报错，同时保留草稿。`IMPORT_STALE_PREVIEW` 等导入错误会提供重新预览原始文档的恢复提示。
 
 ### 会话输入栏
 
-**API 套件**选择器是会话级开关，不是全局开关。它展示安全名称、可用性、兼容性和诊断信息，但不展示 base URL、host/CIDR 策略、凭据引用或 secret 值。
+**API 套件**选择器是会话级开关，不是全局开关。它展示安全名称、可用性、兼容性和诊断信息，但不展示 base URL、Host 访问策略、凭据引用或 secret 值。
 
 即使 Kit 或 Environment 名称很长，输入栏仍会保持紧凑：可见摘要最多显示 5 个字符，超出部分显示为 `...`；完整安全范围仍可通过按钮 title、辅助名称和选择弹窗获取。
 
@@ -151,7 +159,7 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 | --- | --- | --- |
 | 固定目标 | Host 只根据登记的 Service Target endpoint 和相对 Operation path 构造 URL。 | 这不是任意 URL 的互联网或内网代理。模型不能选择 host、代理、重定向策略或凭据。 |
 | Host 白名单 | endpoint hostname 必须已登记；生产 transport 使用固定 IP 前会检查 DNS 返回的全部地址。 | hostname 白名单不是完整授权边界，DNS 和服务端权限仍然重要。 |
-| SSRF / 私网 | 拒绝 loopback、link-local、metadata、保留/文档地址和高风险映射地址。RFC1918、IPv6 ULA、CGNAT 还必须同时满足 `allowPrivateNetwork: true` 和匹配 `allowedCidrs`。 | 私网是显式例外而不是默认能力；请检查全部 DNS 返回并使用最小 CIDR。 |
+| SSRF / 私网 | 拒绝 loopback、link-local、metadata、组播、保留/文档地址和高风险映射地址。已登记 hostname 解析到 RFC1918、IPv6 ULA 或 CGNAT 时允许使用；执行前检查所有 DNS 地址并固定实际连接 IP。 | 只登记可信 API 主机；不要把插件当作任意内网代理。 |
 | Transport | 请求连接到已检查的 IP，同时保留登记 hostname 作为 HTTPS SNI 和 HTTP `Host`。不使用代理、隐式重试或自动重定向。 | HTTP 本身可能不适合敏感数据；部署侧 TLS 和网络控制由使用者负责。 |
 | 请求形状 | 只接受已声明的 path/query/业务 Header 参数。受控 Header、未声明 key、不安全相对路径、cookie 参数和无效 JSON Schema 值会被拒绝。 | 定义和 Schema 必须正确；仍需依赖 API 服务端的授权策略。 |
 | 凭据 | 凭据值由 Host 在请求时解析。安全视图不返回 `secretRef`、密码、token 或 client secret。 | 凭据存储和 DSH Host 仍是可信组件；API 结果属于模型可见的工具输出。 |
@@ -225,7 +233,7 @@ dsh --profile web --dump-config | findstr dsh-api-kit
 <details>
 <summary><b>API 无法连接，或被目标策略拒绝</b></summary>
 
-检查所选 Environment 下 Service Target 的 endpoint、`allowedHosts`、端口、DNS 返回和私网设置。私网 endpoint 同时需要 `allowPrivateNetwork` 与匹配的 `allowedCidrs`。请求从 DSH Host 发起，不是从浏览器发起。重定向会按设计返回 `REDIRECT_NOT_ALLOWED`；请登记最终固定 endpoint。
+检查所选 Environment 下 Service Target 的 endpoint、已登记 hostname、端口和 DNS 返回。已登记的 RFC1918/ULA/CGNAT 内网 API 不再需要额外 CIDR 配置；loopback、link-local、metadata、组播和保留地址仍会被拒绝。请求从 DSH Host 发起，不是从浏览器发起。重定向会按设计返回 `REDIRECT_NOT_ALLOWED`；请登记最终固定 endpoint。
 
 </details>
 

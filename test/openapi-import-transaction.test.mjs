@@ -16,7 +16,7 @@ async function setup() {
   await store.load()
   const config = createConfigurationService({ store, clock: CLOCK })
   await config.createEnvironment({ id: 'dev', name: 'Development', baseUrl: 'https://api.example.test' })
-  await config.createAuthProfile({ id: 'bearer', name: 'Bearer', type: 'bearer', secretRef: 'credential:bearer' })
+  await config.createAuthProfile({ id: 'bearer', name: 'Bearer', type: 'bearer', secretRef: 'CREDENTIAL_BEARER' })
   await config.createServiceTarget({ id: 'backend', name: 'Backend', environmentIds: ['dev'], defaultEnvironmentId: 'dev', authProfileIds: ['bearer'] })
   await config.createKit({ id: 'pets', name: 'Pets', operationIds: [] })
   return { fs, store, config }

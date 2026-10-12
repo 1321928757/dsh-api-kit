@@ -55,20 +55,28 @@ The model has no approval tool and cannot approve its own confirmation token.
 
 ## Requirements and compatibility
 
-- A DSH installation with the **Web profile bundle** loader and a Node.js runtime capable of loading ESM packages.
-- Install-time peer integrations are supplied by DSH when available: `@deepseek-ai/cordis`, `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, `@deepseek-ai/dsh-client-ui-primitives`, and `react`. They are declared as optional peer dependencies in this package.
-- The bundle uses the DSH Web client slots `conversation.input.left` and `settings.section`, plus a Host Typert service named `apiKitConfig` in the `api-kit` namespace.
-- The package currently exposes a Web bundle and does not claim compatibility with non-Web profiles, arbitrary OpenAPI vendor extensions, or every DSH runtime version. Verify the target DSH release and Inspect-confirmed slots before a production rollout.
-- OAuth2 requires a Host credentials provider and secure HTTP transport. Private endpoints require explicit opt-in and matching CIDRs.
+- Supported runtime range: DSH `>=0.2.0-rc.2 <0.3.0` and Node.js `>=20`; the plugin uses strict Host Typert JSON codecs, Host credentials, the Cordis 4.0.4 line, and the Web profile bundle loader.
+- The Client bundle requires React and optionally consumes the `@deepseek-ai/dsh-client-ui-primitives` peer. Cordis Client service dependencies are declared through plugin `inject: ['remote', 'slots']`.
+- The plugin uses DSH Web Client slots `conversation.input.left` (session scope) and `settings.section` (root scope), plus a Host Typert service named `apiKitConfig` in the `api-kit` namespace.
+- The package exposes a Web bundle and does not claim compatibility with non-Web profiles, arbitrary OpenAPI vendor extensions, or DSH 0.3+. Verify releases in an isolated profile before production rollout.
+- OAuth2 requires a Host credentials provider and secure HTTP transport. Registered internal endpoints are supported while local, link-local, metadata, and reserved addresses remain blocked.
+
+## DSH 0.2 upgrade notes
+
+- Existing Registry `secretRef` values are not rewritten during plugin upgrade. Legacy `dsh-api-kit/auth/<id>` sentinels are adapted at the Host credentials boundary; malformed old references remain stored and fail closed until corrected.
+- New Auth Profiles use `DSH_API_KIT_AUTH_V2_<hash>` defaults, so punctuation/case variants cannot overwrite another Profile's credential slot. Explicit refs remain unchanged.
+- Legacy default-ref collisions are shown as Profile IDs plus the shared reference. Unrelated metadata edits are allowed; a user can resolve the collision by assigning an explicit, valid, unique reference to one Profile. The plugin never guesses which stored secret belongs to which Profile.
+- Back up the DSH profile before upgrading and keep the old package available for rollback. Rollback must not delete or rename credentials created by either package version.
+- Verify Host startup, both Web slot contributions, settings-to-RPC flows, and stored credential status using an isolated profile before rollout. Never run smoke checks against a profile currently serving user sessions.
 
 ## Install, update, or remove
 
 ### Install from GitHub
 
-The current repository version is `0.1.0`:
+The current repository version is `0.1.1`:
 
 ```powershell
-dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.0
+dsh plugin --profile web add github:1321928757/dsh-api-kit#v0.1.1
 ```
 
 Restart the existing `dsh web` process after installing or updating so the new bundle enters the Web boot graph. This command installs into the `web` profile; use another isolated profile for testing.
@@ -102,7 +110,7 @@ Build a package snapshot and install it into an isolated profile. This avoids re
 ```powershell
 pnpm pack
 # Copy the generated tgz to a convenient local path if the profile is on another drive.
-dsh plugin --profile demo add C:\path\to\dsh-api-kit-0.1.0.tgz
+dsh plugin --profile demo add C:\path\to\dsh-api-kit-0.1.1.tgz
 dsh --profile demo --dump-config | findstr dsh-api-kit
 ```
 
@@ -111,8 +119,8 @@ Restart the DSH process for that profile after each package update.
 ## Quick start
 
 1. **Create an Environment.** In **Settings → API Kit → Connection configuration**, add an ID such as `demo`. Keep production environments disabled for Agent use unless you explicitly need them.
-2. **Create a Service Target.** Bind it to one or more Environments and configure one endpoint per binding, for example `demo → https://api.example.test`. The endpoint host is automatically included in its host allowlist; review any additional `allowedHosts`, timeouts, and response limits.
-3. **Configure private-network policy only when necessary.** For an internal endpoint, enable private-network access and add matching `allowedCidrs` entries, such as `172.31.33.216/32`. A hostname allowlist alone does not grant private access.
+2. **Create a Service Target.** Bind it to one or more Environments and configure one endpoint per binding, for example `demo → https://api.example.test`. The endpoint host is automatically included in the fixed host allowlist; review timeouts and response limits.
+3. **Register internal API hosts directly.** RFC1918, IPv6 ULA, and CGNAT DNS results are allowed for a hostname explicitly derived from or added to the Environment/Service Target allowlist. Loopback, link-local, metadata, multicast, and reserved addresses remain blocked.
 4. **Manage or bind an Auth Profile.** In **Settings → API Kit → Auth Profile**, create or edit safe metadata for no auth, Bearer, Basic, header/query API key, or OAuth2 Client Credentials; enable/disable or delete unreferenced profiles; and set, replace, or remove credentials through the Host-only credentials flow. Store only a credential reference in the Registry. The Web UI shows only `hasSecret`, credential source, and writable status, never the secret or `secretRef`. Query API keys are explicitly marked as URL-risky and remain disabled until allowed by policy.
 5. **Import the API definition.** Paste an OpenAPI 3.0/3.1 or Swagger 2.0 JSON document, choose **Validate and preview**, select Tags and an existing Service Target/Environment/Auth Profile, resolve conflicts, and use **Confirm and import**. `servers[].url` and Swagger `host/basePath/schemes` are display-only candidates; they never become trusted call targets automatically.
 6. **Activate the scope.** In the conversation input bar, open **API 套件**, select one or more enabled Kits, and select a compatible common Environment.
@@ -126,7 +134,7 @@ Restart the DSH process for that profile after each package update.
 The settings section has three main areas:
 
 - **OpenAPI import:** paste JSON, preview bounded metadata and diagnostics, choose Tags and bindings, review conflicts, and explicitly confirm one atomic import;
-- **Connection configuration:** maintain logical Environments and Service Targets with per-Environment endpoints, allowlists, private-network CIDRs, timeouts, and response limits; inspect available Auth Profile metadata without exposing secrets;
+- **Connection configuration:** maintain logical Environments and Service Targets with per-Environment endpoints, registered-host validation, timeouts, and response limits; inspect available Auth Profile metadata without exposing secrets;
 - **API Kit workbench:** create an empty Kit, inspect its Operations, enable/disable Operations, edit policies, and remove referenced objects only after their links are cleared.
 
 Malformed JSON is reported beside the field while the draft is preserved. Import failures such as `IMPORT_STALE_PREVIEW` include a recovery hint to preview the original document again.
@@ -151,7 +159,7 @@ The application-layer controls below narrow what this bundle can do. They do not
 | --- | --- | --- |
 | Fixed target | The Host constructs a URL only from a registered Service Target endpoint and a relative Operation path. | This is not an arbitrary-URL internet or intranet proxy. The model cannot choose a host, proxy, redirect policy, or credentials. |
 | Host allowlist | The endpoint hostname must be registered. Every DNS answer is checked before production transport uses a pinned address. | A hostname allowlist is not a complete authorization boundary; DNS and server-side permissions still matter. |
-| SSRF / private network | Loopback, link-local, metadata, reserved/documentation, and high-risk mapped addresses are rejected. RFC1918, IPv6 ULA, and CGNAT addresses additionally require `allowPrivateNetwork: true` plus a matching `allowedCidrs` entry. | Private access is an explicit exception, not a default. Review the full DNS answer set and use narrow CIDRs. |
+| SSRF / private network | Loopback, link-local, metadata, multicast, reserved/documentation, and high-risk mapped addresses are rejected. RFC1918, IPv6 ULA, and CGNAT answers are accepted only for a registered hostname, after all DNS answers are classified and the chosen address is pinned. | Register only trusted API hosts; do not use this plugin as an arbitrary intranet proxy. |
 | Transport | Production requests connect to the checked IP while retaining the registered hostname for HTTPS SNI and HTTP `Host`. No proxy, implicit retry, or automatic redirect is used. | HTTP itself may be unsuitable for sensitive data; deployment-level TLS and network controls remain your responsibility. |
 | Request shape | Only declared path/query/business-header parameters are accepted. Controlled headers, undeclared keys, unsafe relative paths, cookie parameters, and invalid JSON Schema values are rejected. | The declaration and schema must be correct; an API-side authorization policy remains necessary. |
 | Credentials | Credential values are resolved on the Host at request time. Safe views expose status/metadata, not `secretRef`, passwords, tokens, or client secrets. | Credential storage and the configured DSH Host remain trusted components. API results are still model-visible tool output. |
@@ -181,7 +189,7 @@ Host bundle (apiKitConfig + fixed Agent tools)
         │
         ├── local Registry: Kits, Operations, Environments, Targets, auth metadata
         ├── Host credentials: request-time secret resolution
-        ├── pinned HTTP transport: allowlist + DNS/IP/CIDR validation
+        ├── pinned HTTP transport: registered-host + DNS/IP validation
         └── runtime context: bounded session summary for prompt assembly
 ```
 
@@ -225,7 +233,7 @@ For `JSON_INVALID`, fix the JSON syntax beside the input field. For `IMPORT_STAL
 <details>
 <summary><b>The API call cannot connect or is rejected by the target policy</b></summary>
 
-Check the Service Target’s endpoint for the selected Environment, its `allowedHosts`, port, DNS answers, and private-network settings. A private endpoint needs both `allowPrivateNetwork` and a matching `allowedCidrs` entry. Requests originate from the DSH Host, not from the browser. Redirects are intentionally returned as `REDIRECT_NOT_ALLOWED`; register the final fixed endpoint instead.
+Check the Service Target’s endpoint for the selected Environment, its registered hostname, port, and DNS answers. Registered RFC1918/ULA/CGNAT hosts are supported without private CIDR toggles; loopback, link-local, metadata, multicast, and reserved addresses remain blocked. Requests originate from the DSH Host, not from the browser. Redirects are intentionally returned as `REDIRECT_NOT_ALLOWED`; register the final fixed endpoint instead.
 
 </details>
 

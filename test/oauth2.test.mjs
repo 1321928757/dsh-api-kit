@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createOAuth2Client, OAuth2Error, validateOAuth2Config } from '../lib/oauth2.js'
 
-const base = { tokenEndpoint: 'https://auth.example.test/oauth/token', clientId: 'client', secretRef: 'cred:client', scope: 'read' }
+const base = { tokenEndpoint: 'https://auth.example.test/oauth/token', clientId: 'client', secretRef: 'CRED_CLIENT', scope: 'read' }
 
 function response(body, status = 200, contentType = 'application/json') {
   return { status, headers: { 'content-type': contentType }, text: async () => body }
@@ -23,7 +23,7 @@ test('client_secret_basic sends form request and resolves credentials only at re
   const client = createOAuth2Client({ config: base, resolver: async (ref) => { calls.push(ref); return { value: 's3cret' } }, transport: async (request) => { calls.push(request); return response(JSON.stringify({ access_token: 'token-value', token_type: 'Bearer', expires_in: 300 })) } })
   const result = await client.getToken()
   assert.deepEqual(result, { accessToken: 'token-value', tokenType: 'Bearer', expiresIn: 300 })
-  assert.equal(calls[0], 'cred:client')
+  assert.equal(calls[0], 'CRED_CLIENT')
   assert.equal(calls[1].method, 'POST')
   assert.equal(calls[1].headers['content-type'], 'application/x-www-form-urlencoded')
   assert.equal(calls[1].headers.authorization, `Basic ${Buffer.from('client:s3cret').toString('base64')}`)

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { classifyIp, cidrContains, normalizeCidr, parseIp } from '../lib/ip.js'
 import { createDnsResolver, resolveAndValidateTarget } from '../lib/ssrf.js'
 
-const publicEnvironment = { id: 'dev', allowedHosts: ['api.example.test'], allowedCidrs: [], allowPrivateNetwork: false, port: 443 }
+const publicEnvironment = { id: 'dev', allowedHosts: ['api.example.test'], port: 443 }
 
 for (const [address, category, highRisk, family] of [
   ['127.0.0.1', 'reserved', true, 4], ['169.254.169.254', 'metadata', true, 4], ['10.2.3.4', 'private', false, 4],
@@ -27,13 +27,15 @@ test('normalizes and matches IPv4 and IPv6 CIDR ranges', () => {
   assert.equal(parseIp('not-an-ip'), undefined)
 })
 
-test('requires all DNS answers to pass policy and returns a fixed address', async () => {
-  const resolver = createDnsResolver({ lookupAll: async () => [{ address: '10.0.0.8', family: 4 }] })
-  await assert.rejects(resolveAndValidateTarget(new URL('https://api.example.test/x'), publicEnvironment, { resolver }), (error) => error.code === 'PRIVATE_ADDRESS_NOT_ALLOWED')
-  const allowed = { ...publicEnvironment, allowPrivateNetwork: true, allowedCidrs: ['10.0.0.0/8'] }
-  const resolved = await resolveAndValidateTarget(new URL('https://api.example.test/x'), allowed, { resolver })
-  assert.equal(resolved.address, '10.0.0.8')
-  assert.equal(resolved.family, 4)
+test('allows registered private API targets without per-endpoint CIDR configuration and pins DNS results', async () => {
+  for (const [address, category] of [['10.0.0.8', 'private'], ['fc00::8', 'private'], ['100.64.1.8', 'cgnat']]) {
+    const family = address.includes(':') ? 6 : 4
+    const resolver = createDnsResolver({ lookupAll: async () => [{ address, family }] })
+    const resolved = await resolveAndValidateTarget(new URL('https://api.example.test/x'), publicEnvironment, { resolver })
+    assert.equal(resolved.address, address)
+    assert.equal(resolved.family, family)
+    assert.equal(resolved.addresses[0].category, category)
+  }
 })
 
 test('rejects mixed answers, empty answers, DNS failures and cancellation', async () => {

@@ -35,6 +35,15 @@ test('T13 retains the inspected Client slots and JSON-only boundary', () => {
   assert.doesNotMatch(client, /webServer/)
 })
 
+test('DSH 0.2 slot contract uses catalog names, stable IDs, and scoped cleanup', () => {
+  const apply = extractFunctionBody('apply')
+  assert.match(apply, /slots\.inject\('conversation\.input\.left',\s*\(\)\s*=>\s*slots\.register\(\{\s*name:\s*'conversation\.input\.left',\s*id:\s*'dsh-api-kit',\s*order:\s*93,\s*label:\s*'API 套件'/)
+  assert.match(apply, /slots\.inject\('settings\.section',\s*\(\)\s*=>\s*slots\.register\(\{\s*name:\s*'settings\.section',\s*id:\s*'api-kit',\s*order:\s*30,\s*label:\s*'API 套件'/)
+  assert.equal((apply.match(/slots\.inject\(/g) || []).length, 2)
+  assert.match(client, /inject:\s*\['remote',\s*'slots'\]/)
+  assert.match(apply, /slots\.register\(/)
+})
+
 test('T13 uses inspected theme tokens and responsive reduced-motion rules', () => {
   for (const token of [
     '--dsw-alias-bg-base', '--dsw-alias-bg-layer-1', '--dsw-alias-bg-layer-2',
@@ -111,19 +120,19 @@ test('UI-04 presents the OpenAPI import as an inspect-config-confirm flow', () =
   assert.doesNotMatch(client, /window\.confirm\('确认按当前筛选、绑定和冲突决策导入/)
 })
 
-test('UI-05 presents vertical connection configuration and endpoint disclosure', () => {
-  for (const marker of ['dsh-api-kit-connection-stack', '先完成环境，再在下方 Service Target', 'Service Target 依赖上方已建立的 Environment', 'Endpoint Disclosure', 'endpointDomId', 'expandedEndpointIds', 'aria-expanded', 'aria-controls', 'hidden: !expanded', '高级网络策略', 'Endpoint baseUrl', '超时毫秒', '允许访问的 Host', '允许访问的私网网段', '允许内网地址', '最大响应字节', '最大重定向次数', '允许特权端口', 'dsh-api-kit-target-auth-profiles', 'targetForm.authProfileIds', 'listAuthProfiles', '认证配置列表加载失败', '当前版本没有可用的安全连接测试 RPC', '不会直接发起网络请求']) {
+test('UI-05 presents vertical connection configuration without private CIDR controls', () => {
+  for (const marker of ['dsh-api-kit-connection-stack', '先完成环境，再在下方 Service Target', 'Service Target 依赖上方已建立的 Environment', 'Endpoint Disclosure', 'endpointDomId', 'expandedEndpointIds', 'aria-expanded', 'aria-controls', 'hidden: !expanded', 'Endpoint baseUrl', '超时毫秒', 'dsh-api-kit-target-auth-profiles', 'targetForm.authProfileIds', 'listAuthProfiles', '认证配置列表加载失败', '当前版本没有可用的安全连接测试 RPC', '不会直接发起网络请求']) {
     assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
   }
   assert.match(client, /targetForm\.environmentIds\.map\(endpointFields\)/)
   assert.match(client, /defaultEnvironmentId.*targetForm\.environmentIds\.map/)
-  assert.match(client, /endpointValue = \(endpoint, key\).*safeString\(endpoint\[key\]\)/)
-  assert.match(client, /patchTargetEndpoint\(environmentId, 'allowedHosts', value\)/)
-  assert.match(client, /patchTargetEndpoint\(environmentId, 'allowedCidrs', value\)/)
-  assert.match(client, /authProfileIds: Array\.isArray\(targetForm\.authProfileIds\)/)
+  assert.match(client, /endpointValue = \(endpoint, key\) => endpoint\[key\] \?\? ''/)
+  assert.doesNotMatch(client, /allowedCidrs|allowPrivateNetwork|允许访问的私网网段|允许内网地址/)
   assert.match(client, /createServiceTarget/)
   assert.match(client, /updateServiceTarget/)
   assert.match(client, /endpoints/)
+  for (const hidden of ['允许访问的 Host', '端口（可选）', '最大响应字节', '最大重定向次数', '允许特权端口', 'allowPrivilegedPort']) assert.doesNotMatch(client, new RegExp(hidden.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  assert.match(client, /return \[environmentId, \{ \.\.\.endpoint, baseUrl:/)
   assert.doesNotMatch(client, /自由 URL.*执行/)
   assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
 })
@@ -204,9 +213,10 @@ test('T16 preserves RPC names, calls, package metadata, and no direct-network bo
   assert.match(client, /const call = async \(name, args = \{\}\)/)
   assert.match(client, /api\[name\]\(\.\.\.parameters\)/)
   assert.doesNotMatch(client, /fetch\s*\(|new URL\s*\(|window\.location|webServer|innerHTML|dangerouslySetInnerHTML/)
-  assert.equal(packageJson.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'], '^0.1.1-rc.2')
+  assert.equal(packageJson.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'], '0.2.0-rc.2')
   assert.equal(packageJson.peerDependenciesMeta?.['@deepseek-ai/dsh-client-ui-primitives']?.optional ?? true, true)
-  assert.deepEqual(packageJson.dsh?.client?.inject, ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-conversation'])
+  assert.deepEqual(packageJson.dsh?.client?.inject, ['@deepseek-ai/dsh-client-ui-primitives'])
+  assert.match(client, /create:\s*\(\)\s*=>\s*\(\s*\{\s*parse:/)
 })
 
 test('Auth Profile management stays Host-only and exposes safe settings flows', () => {
@@ -292,8 +302,12 @@ test('UI-11 gives dynamic fields stable IDs and one-to-one associations', () => 
     'dsh-api-kit-operation-id', 'dsh-api-kit-operation-operation-id', 'dsh-api-kit-operation-name',
     'dsh-api-kit-operation-method', 'dsh-api-kit-operation-service-target',
   ]) assert.match(client, new RegExp(id.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
-  for (const marker of ['${id}-base-url', '${id}-timeout', '${id}-allowed-hosts', '${id}-allowed-cidrs', '${id}-port', '${id}-max-response-bytes', '${id}-max-redirects', '${id}-allow-private-network', '${id}-allow-privileged-port']) {
+  for (const marker of ['${id}-base-url', '${id}-timeout']) {
     assert.ok(client.includes(marker), `missing dynamic endpoint marker: ${marker}`)
+  }
+  for (const marker of ['${id}-allowed-cidrs', '${id}-allow-private-network']) assert.doesNotMatch(client, new RegExp(escapeRegExp(marker)))
+  for (const marker of ['${id}-allowed-hosts', '${id}-port', '${id}-max-response-bytes', '${id}-max-redirects', '${id}-allow-privileged-port']) {
+    assert.doesNotMatch(client, new RegExp(escapeRegExp(marker)), `hidden endpoint marker still rendered: ${marker}`)
   }
   assert.match(client, /'aria-describedby': describedBy/)
   assert.match(client, /targetForm\.environmentIds\.map\(endpointFields\)/)

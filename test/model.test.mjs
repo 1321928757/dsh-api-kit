@@ -118,15 +118,19 @@ test('parameter/schema/request body/response 归一化并限制不安全键', ()
   assert.deepEqual(responses[0].schema, { type: 'array' })
 })
 
-test('environment 从 baseUrl 推导 host，不接受危险协议、查询和凭据', () => {
+test('environment 从 baseUrl 推导 host，丢弃旧私网字段并拒绝危险协议、查询和凭据', () => {
   const environment = normalizeEnvironment({
     id: 'test env',
     baseUrl: 'https://api.example.test/v1///',
     production: true,
+    allowPrivateNetwork: false,
+    allowedCidrs: ['malformed legacy value'],
   })
   assert.equal(environment.id, 'test-env')
   assert.equal(environment.baseUrl, 'https://api.example.test/v1')
   assert.deepEqual(environment.allowedHosts, ['api.example.test'])
+  assert.equal(Object.hasOwn(environment, 'allowedCidrs'), false)
+  assert.equal(Object.hasOwn(environment, 'allowPrivateNetwork'), false)
   assert.equal(environment.production, true)
   assert.equal(environment.agentEnabled, false)
   assert.equal(normalizeEnvironment({ baseUrl: 'file:///etc/passwd' }).baseUrl, '')

@@ -11,7 +11,7 @@ const packageJson = JSON.parse(await read('package.json'))
 
 test('package metadata declares a DSH web bundle', () => {
   assert.equal(packageJson.name, 'dsh-api-kit')
-  assert.equal(packageJson.version, '0.1.0')
+  assert.equal(packageJson.version, '0.1.1')
   assert.equal(packageJson.type, 'module')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
@@ -60,7 +60,9 @@ test('T01 source entries have the expected identities', async () => {
   assert.match(client, /aria-modal/)
   assert.match(client, /parseJsonValue/)
   assert.match(typert, /name: item, wire: item/)
-  assert.match(typert, /schema: jsonSchema/)
+  assert.match(typert, /create: \(\) => z\.json\(\)/)
+  assert.match(typert, /create: \(\) => z\.array\(z\.string\(\)\)/)
+  assert.match(typert, /operationIds.*operationIdsCodec/)
 })
 
 test('bundle patch inserts exactly the plugin row', async () => {
@@ -164,6 +166,18 @@ test('T03 package files include Registry runtime artifacts', () => {
     'lib/openapi-import.js',
     'lib/openapi-import-transaction.js',
     'test/client-contract.test.mjs',
+    'test/environment.test.mjs',
+    'test/model.test.mjs',
+    'test/ssrf.test.mjs',
+    'test/runtime-context.test.mjs',
+    'test/executor.test.mjs',
+    'test/oauth2.test.mjs',
+    'test/configuration.test.mjs',
+    'test/auth.test.mjs',
+    'test/openapi-import-transaction.test.mjs',
+    'test/credential-adapter.test.mjs',
+    'test/fixtures/legacy-auth-collision.json',
+    'test/typert-contract.test.mjs',
     'test/oauth2.test.mjs',
     'test/write-confirmation.test.mjs',
     'test/write-executor.test.mjs',
@@ -177,4 +191,12 @@ test('T03 package files include Registry runtime artifacts', () => {
     'NOTICE',
   ])
   assert.deepEqual(new Set(packageJson.files), expected)
+})
+
+test('package metadata declares the verified DSH 0.2 line and actual Client graph dependency', () => {
+  assert.equal(packageJson.engines.dsh, '>=0.2.0-rc.2 <0.3.0')
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/cordis'], '~4.0.4')
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
+  assert.deepEqual(packageJson.dsh.client.inject, ['@deepseek-ai/dsh-client-ui-primitives'])
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-ui-primitives'], '0.2.0-rc.2')
 })

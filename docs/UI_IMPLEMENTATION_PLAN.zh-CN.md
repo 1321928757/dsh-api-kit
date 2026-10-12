@@ -6,7 +6,7 @@
 - **文档状态**：UI-08 已完成；已完成真实挂载、主题、响应式、无障碍、键盘和主要失败路径验收。未提供自定义 skin 的当前 DSH Web 环境已明确记录为“不适用”，不以不可用环境冒充通过。
 - **创建日期**：2026-08-30
 - **当前 UI 基线**：T13 客户端合同、主题/响应式/键盘基础已完成；T14 Host 写操作、确认意图和 OAuth 能力已完成；UI-08 已完成最新 bundle 的真实 3080 挂载、修复后 Operation 编辑器 smoke、亮/暗主题、320–1440px 全宽度、Accessibility Tree、focus-visible、reduced-motion 和失败路径验收。
-- **最新修复**：修复 Service Target Endpoint 的 Host/CIDR 文本框在已有数组值时被渲染为空、导致可选中但无法输入的问题；非数组兼容值现在也会安全显示为字符串，并保留原有按换行/逗号解析和 Host 最终校验。
+- **最新变化**：`remove-private-endpoint-cidr-controls` 已移除 Service Target Endpoint 的私网开关与 CIDR 配置；早期 Host/CIDR 输入修复记录仅作历史，不代表当前 UI 仍提供这些输入。
 - **相关文档**：[`IMPLEMENTATION_PLAN.zh-CN.md`](./IMPLEMENTATION_PLAN.zh-CN.md)、[`REQUIREMENTS.zh-CN.md`](./REQUIREMENTS.zh-CN.md)、[`README.zh-CN.md`](../README.zh-CN.md)
 
 > 本文档是 UI 调整实施计划，不等同于已完成的代码变更。除非任务明确要求，先按子任务逐项实施、测试并更新状态，不要一次性重写整个客户端。

@@ -1,0 +1,1 @@
+{"schemaVersion":1,"kits":[],"operations":[],"environments":[],"serviceTargets":[],"authProfiles":[{"id":"api-key","type":"bearer","secretRef":"DSH_API_KIT_AUTH_API_KEY"},{"id":"api.key","type":"bearer","secretRef":"DSH_API_KIT_AUTH_API_KEY"}]}

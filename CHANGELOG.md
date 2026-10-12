@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.1
+
+- Compatible with DSH 0.2 Host/Client Typert codec factories and client dependencies.
+- Removes per-endpoint private-network toggles and CIDR lists; registered intranet API hosts are accepted while local/high-risk addresses remain blocked.
+- Preserves and adapts existing Auth Profile credential refs without automatic rewrites.
+
+## Unreleased / DSH 0.2 compatibility
+
+- Added strict Host Typert codec factories for JSON wire values and the `operationIds` string-array parameter; added matching lightweight Client codec factories and Host/Client descriptor regression tests.
+- Updated the DSH engine range to `>=0.2.0-rc.2 <0.3.0`, aligned Cordis/UI peer metadata and Client module graph dependencies, and verified the two Client slot identities against the live DSH 0.2 catalogue.
+- New Auth Profiles receive bounded collision-resistant credential references; legacy persisted references remain untouched, collision preflight is non-sensitive, and credential writes/deletes fail closed for read-only sources.
+- Removed per-endpoint `allowPrivateNetwork` and `allowedCidrs` controls. Registered internal API hosts may resolve to RFC1918/ULA/CGNAT addresses; local, link-local, metadata, multicast, and reserved addresses remain blocked.
+
 ## 0.1.0
 
 - Created the initial dsh-api-kit profile bundle skeleton.
