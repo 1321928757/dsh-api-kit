@@ -43,6 +43,7 @@ const expectedFiles = [
   'test/ssrf.test.mjs',
   'test/runtime-context.test.mjs',
   'test/executor.test.mjs',
+  'test/response-redaction-policy.test.mjs',
   'test/oauth2.test.mjs',
   'test/configuration.test.mjs',
   'test/auth.test.mjs',
@@ -64,7 +65,7 @@ const expectedFiles = [
 ]
 
 if (packageJson.name !== 'dsh-api-kit') fail('package.name must be dsh-api-kit')
-if (packageJson.version !== '0.1.1') fail('T01 package.version must be 0.1.1')
+if (packageJson.version !== '0.1.2') fail('package.version must be 0.1.2')
 if (packageJson.type !== 'module') fail('package.type must be module')
 if (packageJson.main !== './lib/index.js' && packageJson.main !== 'lib/index.js') fail('package.main must point to lib/index.js')
 if (!packageJson.exports || !packageJson.exports['.'] || !packageJson.exports['./client'] || !packageJson.exports['./typert'] || !packageJson.exports['./package.json']) {
@@ -115,7 +116,7 @@ if (!/export const name\s*=\s*['"]dsh-api-kit['"]/.test(host)) fail('Host entry 
 if (!/configuration\.js/.test(host)) fail('Host entry must reference configuration service')
 if (!/id:\s*['"]dsh-api-kit['"]/.test(client)) fail('Client entry must load with dsh-api-kit id')
 if (!/package:\s*['"]dsh-api-kit['"]/.test(typert) || !/face:\s*['"]host['"]/.test(typert)) fail('Typert manifest must declare package and host face')
-for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation', 'approveWriteConfirmation', 'rejectWriteConfirmation', 'cancelWriteConfirmation']) {
+for (const method of ['listKits', 'createKit', 'listOperations', 'createOperation', 'updateOperation', 'deleteOperation', 'getSessionActivation', 'setSessionActivation', 'clearSessionActivation']) {
   if (!new RegExp(`["']${method}["']`).test(typert)) fail(`Typert manifest is missing ${method}`)
 }
 if (!/key:\s*['"]apiKitConfig['"]/.test(typert) || !/namespace:\s*['"]api-kit['"]/.test(typert)) fail('Typert manifest must declare the api-kit namespace')

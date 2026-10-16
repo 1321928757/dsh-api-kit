@@ -12,7 +12,7 @@
 | --- | --- |
 | **Settings → API Kit** | Create and manage Kits, Operations, Environments, and Service Targets; inspect safe authentication metadata and import OpenAPI/Swagger JSON with preview and explicit confirmation. |
 | **Conversation input** | Activate one or more API Kits and one common logical Environment for the current conversation. |
-| **Agent tools / runtime** | Discover registered Operations, read their safe contracts, call fixed GET/HEAD endpoints, and prepare or execute policy-gated writes with Host approval. |
+| **Agent tools / runtime** | Discover registered Operations, read their safe contracts, and directly call fixed declared HTTP methods under the same Host safety boundary. |
 
 ## Features
 
@@ -20,9 +20,9 @@
 - **OpenAPI JSON import:** Preview and import OpenAPI 3.0/3.1 or Swagger 2.0 JSON. The workflow reports paths, tags, operations, diagnostics, and new/update/conflict/skip classifications before one atomic Registry commit.
 - **Environment and Service Target separation:** An Environment represents a logical stage such as `demo`, `dev`, or production. A Service Target represents a logical service and stores a separate endpoint and network policy for each bound Environment.
 - **Session-scoped activation:** The conversation picker stores activation in a Host-only in-memory map keyed by the authoritative session ID. Each active Kit must share the selected Environment.
-- **Fixed-target execution:** Agent calls use a stable `operationId`, declared parameters, a registered Service Target endpoint, and the Operation path. The model cannot supply an arbitrary URL, host, proxy, redirect policy, session ID, or credential value.
+- **Fixed-target execution:** Agent calls use a stable `operationId`, declared parameters, a registered Service Target endpoint, and the Operation path. The model cannot supply an arbitrary URL, host, proxy, redirect policy, session ID, or override a Host-managed credential value.
 - **Host-only authentication:** Settings can create, edit, enable/disable, bind, and delete safe Auth Profile metadata for no auth, Bearer, Basic, header/query API key, and OAuth2 Client Credentials. Secrets are set/replaced/removed through Host credentials only and are resolved only when a request is executed. Query API keys remain disabled by default and are marked as URL-risky.
-- **Response governance and audit:** Responses are bounded and conservatively redacted. Calls and policy rejections are written to a local allowlisted JSONL audit file.
+- **Response governance and audit:** Responses are always bounded and conservatively redacted by default. An operator can accept the risk and disable response-body redaction for an individual Operation. Calls and policy rejections go to a local allowlisted JSONL audit file without request/response payloads.
 - **Accessible Web UI:** Settings and the session picker use DSH theme tokens, keyboard/focus handling, semantic status feedback, responsive layouts, touch-sized primary controls, and reduced-motion support.
 - **Compact session scope label:** The composer shows a bounded five-character summary with `...` for long Kit or Environment combinations, while the full safe scope remains available through the button title, accessible name, and picker dialog.
 
@@ -35,9 +35,9 @@ All tools are fixed registrations. They do not accept arbitrary URLs or expose a
 | `api_kits` | No business parameters. | No network. Returns bounded Kit and Environment summaries for the current session, including active IDs and read/write counts. |
 | `api_operations` | Optional `query`, exact `tag`, `method`, `serviceTargetId`, `offset` (default `0`), and `limit` (default `20`, maximum `100`). | No network. Searches only Operations discoverable through the current session’s active Kits and Environment. |
 | `api_describe` | Required `operationId` returned by `api_operations`. | No network. Returns the complete safe call contract, including declared parameters, request/response schema previews, policy metadata, and relative path; it does not return credentials or arbitrary target URLs. |
-| `api_call` | Required `operationId`; optional `pathParams`, `query`, `headers`, and `body` fields. Only declared path/query/business-header keys are accepted. | Executes fixed **GET/HEAD** Operations. `body`, cookie parameters, undeclared keys, controlled headers, invalid schema values, and policy violations are rejected. Write methods produce a confirmation intent instead of sending HTTP. |
-| `api_write_prepare` | Required `operationId`; optional declared `pathParams`, `query`, `headers`, and JSON `body`. | No network. Creates a short-lived, single-use Host confirmation intent only when the Operation and active Kit policies allow the write. |
-| `api_write_execute` | Required `operationId` and `confirmationToken`; the same logical request fields used during preparation. | Sends one write only after the Host has approved the matching intent. The token is bound to the Session, Operation, method, Service Target, Environment, request fingerprint, and current Registry fingerprint; replay and mismatches fail closed. |
+| `api_call` | Required `operationId`; optional `pathParams`, `query`, `headers`, and JSON `body` fields. Only declared path/query/business-header keys are accepted. | Directly executes every declared supported HTTP method, including POST/PUT/PATCH/DELETE, through the fixed Host target. Undeclared keys, controlled headers, invalid schema values, arbitrary URLs, and network-policy violations are rejected. |
+| `api_write_prepare` | Legacy compatibility descriptor. | Returns `WRITE_CONFIRMATION_UNSUPPORTED` without network access; use `api_call` instead. |
+| `api_write_execute` | Legacy compatibility descriptor. | Returns `WRITE_CONFIRMATION_UNSUPPORTED` without network access; no confirmation token is accepted. |
 
 Recommended read flow:
 
@@ -45,13 +45,13 @@ Recommended read flow:
 api_kits → api_operations → api_describe → api_call
 ```
 
-Write flow:
+Direct invocation flow:
 
 ```text
-api_write_prepare → human approval → api_write_execute
+api_kits → api_operations → api_describe → api_call
 ```
 
-The model has no approval tool and cannot approve its own confirmation token.
+The operator controls which imported and enabled Operations are exposed. Direct writes still require a declared Operation, fixed Service Target/Environment, request Schema validation, Host-side credentials, network protections, bounded responses, and audit projection; there is no separate write flag or confirmation token.
 
 ## Requirements and compatibility
 
@@ -124,8 +124,8 @@ Restart the DSH process for that profile after each package update.
 4. **Manage or bind an Auth Profile.** In **Settings → API Kit → Auth Profile**, create or edit safe metadata for no auth, Bearer, Basic, header/query API key, or OAuth2 Client Credentials; enable/disable or delete unreferenced profiles; and set, replace, or remove credentials through the Host-only credentials flow. Store only a credential reference in the Registry. The Web UI shows only `hasSecret`, credential source, and writable status, never the secret or `secretRef`. Query API keys are explicitly marked as URL-risky and remain disabled until allowed by policy.
 5. **Import the API definition.** Paste an OpenAPI 3.0/3.1 or Swagger 2.0 JSON document, choose **Validate and preview**, select Tags and an existing Service Target/Environment/Auth Profile, resolve conflicts, and use **Confirm and import**. `servers[].url` and Swagger `host/basePath/schemes` are display-only candidates; they never become trusted call targets automatically.
 6. **Activate the scope.** In the conversation input bar, open **API 套件**, select one or more enabled Kits, and select a compatible common Environment.
-7. **Ask the Agent to use the fixed flow.** It should discover an Operation, describe its required parameters, and call it by `operationId`. Start with read-only GET/HEAD Operations and add a SQL-like `LIMIT` or API-side pagination yourself when the upstream service supports it.
-8. **Treat writes as a separate change.** A write must be enabled by both the Operation and Kit policy and must pass Host approval. Preparation never contacts the API; execution consumes the approved intent once.
+7. **Ask the Agent to use the fixed flow.** It should discover an Operation, describe its required parameters, and call it by `operationId`. GET, HEAD, POST, PUT, PATCH, and DELETE use the same fixed-target Host path; write side effects remain visible in method metadata and are controlled by which Operations you import and enable.
+8. **Review operator-controlled risk.** Legacy `allowWrite` and write-method fields may remain in stored Registry data for migration compatibility, but they no longer gate otherwise eligible Operations. `api_write_prepare` and `api_write_execute` are unsupported compatibility descriptors; direct writes use `api_call`.
 
 ## Feature tour
 
@@ -138,6 +138,16 @@ The settings section has three main areas:
 - **API Kit workbench:** create an empty Kit, inspect its Operations, enable/disable Operations, edit policies, and remove referenced objects only after their links are cleared.
 
 Malformed JSON is reported beside the field while the draft is preserved. Import failures such as `IMPORT_STALE_PREVIEW` include a recovery hint to preview the original document again.
+
+### Temporary-token APIs: per-Operation response redaction
+
+In **Settings → API 套件 → API Kit workbench → Edit the getToken Operation → Agent 权限与安全**, check **关闭此 Operation 的响应脱敏（我理解并承担风险）** and save. This stores `policy.redactResponse: false`; the default is `true`, including old Registry entries and newly imported Operations. Changes apply on the next call; uncheck and save to restore redaction. This setting belongs to the Operation, not a Kit or session: all Kits referencing that Operation and all its bound environments share it.
+
+The Agent can then call `getToken` and pass the returned temporary token through a declared ordinary query/body/business-header parameter of another Operation, for example `query.access_token`. Declare the parameter and its schema first. It cannot override a same-name query value injected by an Auth Profile or any authentication/controlled header. `Authorization` and `Cookie` remain controlled; APIs requiring them need a Host authentication flow, not this switch.
+
+**Risk:** This disables default sensitive-key redaction, `policy.redactKeys`, and text-pattern redaction for the entire response body of that Operation, including error responses; it is not a token-field-only exemption. Sensitive values can enter model requests, session history, and subsequent tool arguments. Temporary tokens are still secrets, and restoring redaction does not remove earlier history. Opt out only for trusted, necessary endpoints with short-lived, least-privilege tokens. Configuration/authentication safe views stay redacted and local audit remains payload-free. Byte/depth/array/string/key limits and fail-closed malformed/truncated JSON behavior remain unchanged.
+
+This is a saved operator configuration, never a per-call `api_call` argument. Upgrade the installed plugin to see the option; editing this checkout does not automatically update an existing package installation.
 
 ### Conversation input
 
@@ -163,15 +173,15 @@ The application-layer controls below narrow what this bundle can do. They do not
 | Transport | Production requests connect to the checked IP while retaining the registered hostname for HTTPS SNI and HTTP `Host`. No proxy, implicit retry, or automatic redirect is used. | HTTP itself may be unsuitable for sensitive data; deployment-level TLS and network controls remain your responsibility. |
 | Request shape | Only declared path/query/business-header parameters are accepted. Controlled headers, undeclared keys, unsafe relative paths, cookie parameters, and invalid JSON Schema values are rejected. | The declaration and schema must be correct; an API-side authorization policy remains necessary. |
 | Credentials | Credential values are resolved on the Host at request time. Safe views expose status/metadata, not `secretRef`, passwords, tokens, or client secrets. | Credential storage and the configured DSH Host remain trusted components. API results are still model-visible tool output. |
-| Read/write policy | GET/HEAD are the direct read path. Writes require Operation `allowAgentCall`, Operation `allowWrite` and confirmation policy, active Kit write policy, and a matching Host-approved one-shot intent. | Defaults are fail-closed, but an administrator can deliberately enable a write. Approval does not grant broader target or credential access. |
-| Response governance | JSON is recursively redacted using defaults and Operation `policy.redactKeys`; text, XML, JavaScript, unknown types, and non-2xx bodies receive conservative sensitive-value redaction. Depth, array, string, object-key, byte, timeout, and response-size limits apply. Response headers are not returned. | The response limit is an application read/projection limit. It is not a guarantee that the upstream server stopped scanning or sending data before the Host received it. |
+| Read/write execution | All declared supported methods, including POST/PUT/PATCH/DELETE, use the same direct `api_call` path. Legacy write-policy fields are loadable for migration but do not gate discovery or execution. | The operator controls imported/enabled Operations; direct calls still require explicit Operation eligibility and all Host target, schema, auth, network, bounds, redaction, cancellation, and audit checks. |
+| Response governance | By default JSON is recursively redacted using defaults and Operation `policy.redactKeys`; text, XML, JavaScript, unknown types, and non-2xx bodies receive conservative sensitive-value redaction. An operator may set `policy.redactResponse: false` only for this Operation and accept the risk. Depth, array, string, object-key, byte, timeout, and response-size limits always apply. Response headers are not returned. | The response limit is an application read/projection limit. It is not a guarantee that the upstream server stopped scanning or sending data before the Host received it. |
 | Audit | Calls and policy rejections are projected to an allowlisted JSONL record with no URL, path, query, headers, body, credentials, stack, or error cause. Files are lazily cleaned after 14 days by default. | Audit is best-effort: an audit write failure does not change the business result. Protect the local DSH home directory. |
 
 ## Known limitations
 
 - Only **JSON** OpenAPI/Swagger documents are imported. YAML, URL/Git import, remote `$ref`, and unsupported vendor-specific schema behavior are out of scope. Local JSON Pointer `$ref` values are bounded by depth/count limits; missing or cyclic references produce diagnostics.
 - `servers[].url` and Swagger `host/basePath/schemes` are display-only. A previously registered Service Target and its Environment endpoint are always required for an imported Operation.
-- The fixed Agent read path executes only GET/HEAD. `OPTIONS` can be registered/discovered but is not a direct `api_call` method. POST/PUT/PATCH/DELETE require the separate write-confirmation flow.
+- The fixed Agent path accepts each HTTP method declared by the Operation contract, including GET, HEAD, POST, PUT, PATCH, DELETE, and OPTIONS. It never accepts arbitrary URLs, hosts, proxies, redirects, session IDs, or undeclared request fields.
 - Write preparation is offline, short-lived, single-use, and bound to the current Registry. The model cannot approve a token; if Host approval is unavailable, execution fails closed.
 - Only JSON request bodies are supported for writes. Cookie parameters, multipart/file uploads, GraphQL, SSE, WebSocket, automatic redirects, implicit retries, and an independent MCP Server are not supported.
 - Authentication supports no auth, Bearer, Basic, header/query API keys, and OAuth2 Client Credentials. Query API keys are disabled by default. OAuth2 does not implement authorization code, PKCE, OIDC discovery, refresh-token persistence, browser callbacks, arbitrary token endpoints, or non-HTTPS token endpoints.

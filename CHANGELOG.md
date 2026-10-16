@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2
+
+### Per-operation response redaction
+
+- Added Operation `policy.redactResponse` (default `true`); only an explicit persisted `false` opts one Operation out of JSON and text response-body redaction, including non-2xx bodies. Agent call arguments cannot override it.
+- Added an unchecked risk-acknowledgement checkbox to the Operation editor, a visible disabled-redaction badge, and safe policy metadata in discovery/description. Editing preserves existing response policies.
+- Response size/structure limits, fail-closed malformed/truncated JSON, fixed targets, SSRF, schema validation, controlled headers, Host authentication, and payload-free local audit remain unchanged. Unredacted results and temporary tokens may enter model requests and session history.
+
+## Unreleased / remove-write-operation-gates
+
+- Enabled POST/PUT/PATCH/DELETE Operations are now discoverable and execute directly through `api_call`; legacy `allowWrite` and write-method allowlists remain loadable for migration but no longer gate eligible Operations.
+- Unified read/write execution keeps fixed Service Target/Environment selection, registered-host and DNS/IP SSRF validation, declared parameter/body Schema checks, request-time Auth Profile resolution, timeout/response limits, redaction, cancellation, and audit projection.
+- `api_write_prepare` and `api_write_execute` remain compatibility descriptors that return `WRITE_CONFIRMATION_UNSUPPORTED`; they never send HTTP requests. Use `api_call` with the declared `operationId`.
+- OpenAPI-imported Operations use the same Agent eligibility rules as reads after the import transaction is explicitly confirmed. Existing Registry data is not rewritten destructively.
+
 ## 0.1.1
 
 - Compatible with DSH 0.2 Host/Client Typert codec factories and client dependencies.
@@ -67,6 +82,6 @@
 ## Unreleased / T14
 
 - Added Host-only OAuth2 Client Credentials profiles with HTTPS endpoint validation, Environment-bound DNS/IP pinning, manual redirect denial, bounded response parsing, request-time credential resolution, cache isolation, single-flight refresh, and safe OAuth metadata views.
-- Added policy-gated POST/PUT/PATCH/DELETE preparation and execution. A write requires both Operation and Kit write policy, a short-lived one-shot confirmation intent, complete Session/target/Environment/request/Registry binding, and Host approval; the model has no approval tool.
-- Added `api_write_prepare` and `api_write_execute`, Host confirmation RPC methods for approve/reject/cancel, lifecycle cleanup, conservative text/error response redaction, stable confirmation error codes, and expanded regression/manifest coverage.
+- Added direct POST/PUT/PATCH/DELETE execution through the fixed-target `api_call` path. Legacy write policy fields remain loadable for migration but no longer gate eligible Operations; the model has no approval tool.
+- Retains `api_write_prepare` and `api_write_execute` as offline unsupported compatibility descriptors while preserving conservative response/error redaction, audit records, and expanded regression/manifest coverage.
 - T14 does not add authorization-code/PKCE/OIDC discovery, refresh-token persistence, browser callbacks, arbitrary token endpoints, multipart/uploads, SSE/WebSocket, automatic redirects, or implicit retries.

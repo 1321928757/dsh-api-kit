@@ -1,7 +1,7 @@
 {
   "name": "dsh-api-kit",
-  "version": "0.1.1",
-  "description": "DeepSeek Harness API Kit bundle: local-first API Kit configuration, discovery, and fixed-target read-only API calls.",
+  "version": "0.1.2",
+  "description": "DeepSeek Harness API Kit bundle: local-first API Kit configuration, discovery, and fixed-target declared HTTP calls.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -52,6 +52,7 @@
     "test/ssrf.test.mjs",
     "test/runtime-context.test.mjs",
     "test/executor.test.mjs",
+    "test/response-redaction-policy.test.mjs",
     "test/oauth2.test.mjs",
     "test/configuration.test.mjs",
     "test/auth.test.mjs",

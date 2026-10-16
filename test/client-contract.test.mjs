@@ -60,8 +60,9 @@ test('T13 uses inspected theme tokens and responsive reduced-motion rules', () =
   assert.match(client, /state-success-primary/)
 })
 
-test('UI-01 presents scope relationships and conservative settings summary', () => {
-  for (const marker of ['理解 API 套件的作用域', 'API 套件关系', '服务目标', '可用环境', '配置问题', 'OpenAPI Server URL 仅用于预览']) assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+test('UI-01 presents a concise conservative settings summary', () => {
+  for (const marker of ['可用环境', '配置问题']) assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
+  assert.doesNotMatch(client, /dsh-api-kit-scope-guide|理解 API 套件的作用域|OpenAPI Server URL 仅用于预览/)
   assert.match(client, /settingsSummary\(kits, operations, targets, environments, loaded\)/)
   assert.match(client, /summaryItem\('写操作'/)
   assert.match(client, /summaryItem\('只读操作'/)
@@ -74,7 +75,7 @@ test('UI-01 presents scope relationships and conservative settings summary', () 
 })
 
 test('UI-02 explains session scope and common environment diagnostics', () => {
-  for (const marker of ['当前会话范围', '尚未激活 API 套件', 'Operation 范围', '读写风险', '共同可用环境', '当前套件没有共同可用环境', '共同环境暂不可统计', '默认禁止 Agent 调用', 'aria-describedby']) {
+  for (const marker of ['当前会话范围', '尚未激活 API 套件', 'Operation 范围', '读写风险', '共同可用环境', '当前套件没有共同可用环境', '共同环境暂不可统计', '按统一 Host 规则执行', 'aria-describedby']) {
     assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
   }
   assert.match(client, /sessionScopeSummary\(kitIds, kits, environmentId, environments\)/)
@@ -85,6 +86,22 @@ test('UI-02 explains session scope and common environment diagnostics', () => {
   assert.match(client, /scopeAccessibleName\(selectedScope, \{ loading, invalid: selectedIsInvalid \}\)/)
   assert.match(client, /title: scopeTitle, 'aria-label': scopeAriaLabel/)
   assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
+})
+
+test('response redaction opt-out is unchecked by default and participates in dirty state', () => {
+  const fingerprint = new Function('safeString', `${extractFunctionBody('operationFormFingerprint')}; return operationFormFingerprint`)((value, fallback = '') => typeof value === 'string' ? value : fallback)
+  const form = { id: 'get-token', policy: { allowAgentCall: true } }
+  assert.equal(fingerprint(form), fingerprint({ ...form, policy: { ...form.policy, redactResponse: true } }))
+  assert.notEqual(fingerprint(form), fingerprint({ ...form, policy: { ...form.policy, redactResponse: false } }))
+  assert.match(client, /policy: \{ allowAgentCall: true, redactResponse: true \}/)
+  assert.match(client, /policy: \{ \.\.\.safeRecord\(item\.policy\), allowAgentCall: item\.policy\?\.allowAgentCall === true, redactResponse: item\.policy\?\.redactResponse !== false \}/)
+  assert.match(client, /checked: form\.policy\.redactResponse === false/)
+  assert.match(client, /redactResponse: !event\.target\.checked/)
+  assert.match(client, /'aria-describedby': 'dsh-api-kit-operation-redaction-help'/)
+  assert.match(client, /关闭此 Operation 的响应脱敏（我理解并承担风险）/)
+  assert.match(client, /包括错误响应.*模型服务.*会话记录/)
+  assert.match(client, /重新开启不会删除已有历史/)
+  assert.match(client, /响应未脱敏/)
 })
 
 test('UI-03 replaces key multiple selects with controlled checkbox choices', () => {
@@ -106,7 +123,7 @@ test('UI-03 replaces key multiple selects with controlled checkbox choices', () 
 })
 
 test('UI-04 presents the OpenAPI import as an inspect-config-confirm flow', () => {
-  for (const marker of ['activeStep', 'confirming', '检查文档', '配置导入', '确认变更', 'aria-current', '继续配置导入', '查看变更确认', 'dsh-api-kit-import-review', 'dsh-api-kit-import-confirmation', 'role: \'dialog\'', 'aria-modal', 'confirmationDialogRef', 'Escape', '全部保留本地', '全部覆盖', '全部跳过', 'Server 候选（仅显示，不是执行目标）', '一次性写入本地 Registry', '默认禁止 Agent 调用']) {
+  for (const marker of ['activeStep', 'confirming', '检查文档', '配置导入', '确认变更', 'aria-current', '继续配置导入', '查看变更确认', 'dsh-api-kit-import-review', 'dsh-api-kit-import-confirmation', 'role: \'dialog\'', 'aria-modal', 'confirmationDialogRef', 'Escape', '全部保留本地', '全部覆盖', '全部跳过', 'Server 候选（仅显示，不是执行目标）', '一次性写入本地 Registry', '按统一 Host 规则执行']) {
     assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
   }
   assert.match(client, /setActiveStep\('configure'\)/)
@@ -147,11 +164,11 @@ test('UI-07 provides safe deletion confirmation and documents unavailable connec
 })
 
 test('UI-06 groups Operation editing and protects dirty/write-risk saves', () => {
-  for (const marker of ['operationFormFingerprint', 'formSnapshot', 'formDirty', 'pendingFormAction', 'discardDialogOpen', 'writeConfirming', 'requestFormAction', 'discardAndContinue', '放弃未保存修改', '保留草稿', '放弃修改', '基本信息', '请求定义', '响应定义', 'Agent 权限与安全', 'dsh-api-kit-operation-editor', 'dsh-api-kit-operation-group', 'dsh-api-kit-operation-dirty', '尚有未保存修改', 'Parameters JSON', 'Request Body JSON', 'Responses JSON', 'ID', 'disabled:', '允许 Agent 发现和调用', '允许写操作', '调用前需要确认', 'dsh-api-kit-operation-write-risk', '真实业务数据', '尚未开启调用前人工确认', 'requestOperationSave', '确认保存写操作策略', 'API Kit：', 'Service Target：', '不代表已经执行 API 请求', '下次 Agent 调用时生效', 'createOperation', 'updateOperation', 'aria-modal', 'aria-busy', 'Escape']) {
+  for (const marker of ['operationFormFingerprint', 'formSnapshot', 'formDirty', 'pendingFormAction', 'discardDialogOpen', 'requestFormAction', 'discardAndContinue', '放弃未保存修改', '保留草稿', '放弃修改', '基本信息', '请求定义', '响应定义', 'Agent 权限与安全', 'dsh-api-kit-operation-editor', 'dsh-api-kit-operation-group', 'dsh-api-kit-operation-dirty', '尚有未保存修改', 'Parameters JSON', 'Request Body JSON', 'Responses JSON', 'ID', 'disabled:', '允许 Agent 发现和调用', 'dsh-api-kit-operation-write-risk', 'POST、PUT、PATCH、DELETE', 'requestOperationSave', '下次 Agent 调用时生效', 'createOperation', 'updateOperation', 'aria-modal', 'aria-busy', 'Escape']) {
     assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
   }
-  assert.match(client, /form\.policy\.allowWrite/)
-  assert.match(client, /form\.policy\.requiresConfirmation/)
+  assert.match(client, /form\.policy\.allowAgentCall/)
+  assert.doesNotMatch(client, /form\.policy\.allowWrite|form\.policy\.requiresConfirmation/)
   assert.match(client, /requestFormAction\(\(\) => setSelectedKit/)
   assert.doesNotMatch(client, /api_write_execute|confirmationToken|secretRef/)
 })
@@ -237,7 +254,7 @@ test('T13 provides keyboard focus and semantic status/error feedback', () => {
 
 test('UI-08 preserves dialog focus, independent request generations, loading state, and selected semantics', () => {
   assert.match(client, /const FOCUSABLE_SELECTOR/)
-  assert.match(client, /trapDialogTab\(event, activeDialogRef\)/)
+  assert.match(client, /trapDialogTab\(event, confirmationDialogRef\)/)
   assert.match(client, /const bindingRequestRef = React\.useRef\(0\)/)
   assert.match(client, /requestId !== bindingRequestRef\.current/)
   assert.match(client, /bindingBusyRef\.current = false; setBindingBusy\(false\)/)
@@ -261,6 +278,45 @@ test('UI-09 provides compact settings lists, progressive disclosure, and grouped
   assert.match(client, /progressiveListControl\('Service Target'/)
   assert.match(client, /React\.Fragment, null, React\.createElement\('section', \{ className: 'dsh-api-kit-card dsh-api-kit-connection-section'/)
   assert.match(client, /className: 'dsh-api-kit-settings-group-summary'.*onClick: \(event\) => \{ event\.preventDefault\(\); toggleSettingsGroup\(key\) \}/)
+})
+
+test('UI-12 supports associating existing Operations and non-destructive Kit removal', () => {
+  for (const marker of ['关联已有 Operation', 'dsh-api-kit-association-title', 'dsh-api-kit-association-description', 'dsh-api-kit-association-operations', '移出当前 Kit', '不会在激活套件中发现它', 'associationCandidateOptions', 'associationDialogRef', 'associationTriggerRef']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /call\('addOperationsToKit', \{ kitId, operationIds \}\)/)
+  assert.match(client, /call\('removeOperationsFromKit', \{ kitId: kit\.id, operationIds: \[operation\.id\] \}\)/)
+  assert.match(client, /trapDialogTab\(event, associationDialogRef\)/)
+  assert.match(client, /associationSelection\.length === 0/)
+  assert.match(client, /当前 Kit 已关联全部 Operation，暂无可新增项。/)
+})
+
+test('settings exposes Operation definitions outside the active Kit', () => {
+  for (const marker of ['当前 Kit 之外的 Operation', 'outsideKitOperations', 'outsideOperationCatalog', '未关联当前 Kit 的 Operation', '编辑、启停和删除不会自动改变其他 Kit 的关联']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /operations\.filter\(\(operation\) => !safeKitOperationIds\.includes\(operation\.id\)\)/)
+  assert.match(client, /button\('编辑', run\(\(\) => requestFormAction\(\(\) => \{ void editOperation\(operation\.id\) \}\)\), 'secondary', busy\)/)
+  assert.match(client, /button\('删除', run\(\(event\) => removeOperation\(operation\.id, event\.currentTarget\)\), 'danger', busy\)/)
+  assert.match(client, /expandedOutsideOperationList/)
+})
+
+test('UI-18 keeps the compact Kit creation form at narrow widths', () => {
+  assert.match(client, /\.dsh-api-kit-form label,\.dsh-api-kit-field\{display:grid;align-content:start;gap:5px/)
+  assert.match(client, /\.dsh-api-kit-create-row\{align-items:stretch;flex-direction:column\}\.dsh-api-kit-create-row>\.dsh-api-kit-field\{flex:0 1 auto\}/)
+})
+
+test('UI-19 keeps Kit creation collapsed and Operation actions compact', () => {
+  for (const marker of ['kitCreateOpen', '打开新建套件表单', 'operationActionMenu', 'dsh-api-kit-operation-menu', '更多操作']) assert.match(client, matchLiteral(marker))
+  assert.match(client, /setKitCreateOpen\(false\)/)
+  assert.match(client, /includeDetach && button\('移出当前 Kit'/)
+  assert.match(client, /kitCreateOpen && React\.createElement\('div', \{ className: 'dsh-api-kit-create-row' \}/)
+})
+
+test('UI-13 preserves Unicode Kit names while generating safe unique IDs', () => {
+  assert.match(client, /function kitIdFromName\(name, kits = \[\]\)/)
+  assert.match(client, /\.normalize\('NFKD'\)/)
+  assert.match(client, /const base = normalized \|\| 'kit'/)
+  assert.match(client, /const usedIds = new Set\(safeArray\(kits\)/)
+  assert.match(client, /setNotice\(`API Kit 已创建，内部 ID：\$\{id\}。`\)/)
+  assert.match(client, /支持中文名称；系统会自动生成安全的内部 ID。/)
+  assert.match(client, /maxLength: 120/)
 })
 
 test('T13 guards stale async responses and preserves actionable JSON errors', () => {

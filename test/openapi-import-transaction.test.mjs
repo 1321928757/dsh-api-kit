@@ -48,6 +48,19 @@ test('preview and confirm import atomically bind existing target, environment an
   assert.equal(result.archive.saved, false)
 })
 
+test('imported write Operations default to Agent discovery and calling enabled', async () => {
+  const { store, config } = await setup()
+  const document = {
+    openapi: '3.0.3', info: { title: 'Write API', version: '1' }, servers: [{ url: 'https://api.example.test' }],
+    paths: { '/pets': { post: { operationId: 'createPet', responses: { '201': { description: 'created' } } } } },
+  }
+  const importer = createOpenApiImportTransactionService({ store, clock: CLOCK })
+  const preview = importer.previewOpenApiImport(document, { sourceId: 'write-api' })
+  assert.equal(preview.operations[0].policy.allowAgentCall, true)
+  await importer.confirmOpenApiImport(confirmArgs(preview, document))
+  assert.equal(config.getSnapshot().operations[0].policy.allowAgentCall, true)
+})
+
 test('tag filtering is case-insensitive and does not write excluded operations', async () => {
   const { store, config } = await setup()
   const document = {

@@ -122,10 +122,14 @@ test('query arrays and booleans are rendered and authentication cannot be overri
   assert.equal(conflict.error.code, 'INVALID_ARGUMENT')
 })
 
-test('write methods, confirmation policies, cookie parameters and bodies fail closed', async () => {
-  const { config } = await setup({ operation: { method: 'POST', policy: { allowAgentCall: true, allowWrite: true } } })
-  const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response()) })
-  assert.equal((await executor.execute({ operationId: 'user' }, exec())).error.code, 'OPERATION_NOT_FOUND')
+test('declared write methods execute directly while invalid requests still fail closed', async () => {
+  const calls = []
+  const { config } = await setup({ operation: { method: 'POST', policy: { allowAgentCall: true, allowWrite: false }, requestBody: { required: true, schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } } } } })
+  const executor = createApiKitHttpExecutor(config, { transport: fakeTransport(response(), calls) })
+  assert.equal((await executor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'q' }, body: { name: 'ok' } }, exec())).ok, true)
+  assert.equal(calls[0].method, 'POST')
+  assert.equal(JSON.parse(calls[0].body).name, 'ok')
+  assert.equal((await executor.execute({ operationId: 'user', pathParams: { userId: 'x' }, query: { q: 'q' }, body: {} }, exec())).error.code, 'PARAMETER_INVALID')
 
   const readSetup = await setup({ operation: { policy: { allowAgentCall: true, requiresConfirmation: true } } })
   const readExecutor = createApiKitHttpExecutor(readSetup.config, { transport: fakeTransport(response()) })

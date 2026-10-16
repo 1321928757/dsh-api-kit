@@ -11,7 +11,7 @@ const packageJson = JSON.parse(await read('package.json'))
 
 test('package metadata declares a DSH web bundle', () => {
   assert.equal(packageJson.name, 'dsh-api-kit')
-  assert.equal(packageJson.version, '0.1.1')
+  assert.equal(packageJson.version, '0.1.2')
   assert.equal(packageJson.type, 'module')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
@@ -78,20 +78,17 @@ test('T05 Typert manifest exposes only safe configuration methods', async () => 
   assert.doesNotMatch(typert, /api_call|api_kits|api_operations/)
 })
 
-test('T14 exposes OAuth and write-confirmation contracts in Typert and model tools', async () => {
+test('T14 exposes OAuth and deprecated write compatibility stubs in model tools', async () => {
   const typert = await read('lib/typert.host.js')
   const model = await read('lib/model.js')
   const validation = await read('lib/config-validation.js')
   const tools = await read('lib/agent-tools.js')
-  for (const name of ['approveWriteConfirmation', 'rejectWriteConfirmation', 'cancelWriteConfirmation']) {
-    assert.match(typert, new RegExp(`argsMethod\\('${name}'\\)`))
-    assert.match(typert, new RegExp(`member\\('${name}', '${name}\\(args: object\\): object'`))
-  }
+  assert.doesNotMatch(typert, /approveWriteConfirmation|rejectWriteConfirmation|cancelWriteConfirmation/)
   assert.match(model, /oauth2-client-credentials/)
   assert.match(validation, /oauth2-client-credentials/)
-  assert.match(tools, /name: 'api_write_prepare'/)
-  assert.match(tools, /name: 'api_write_execute'/)
-  assert.match(tools, /confirmationToken/)
+  assert.match(tools, /WRITE_CONFIRMATION_UNSUPPORTED/)
+  assert.match(tools, /api_write_execute.*WRITE_CONFIRMATION_UNSUPPORTED/s)
+  assert.doesNotMatch(tools, /confirmationToken/)
   assert.match(tools, /required: \['operationId'\]/)
 })
 
@@ -122,10 +119,10 @@ test('T10 registers a per-assembly dynamic runtime context', async () => {
   assert.match(context, /systemPrompt\.context/)
   assert.match(host, /systemPrompt/)
   assert.match(context, /api_operations/)
-  assert.match(context, /GET\/HEAD/)
+  assert.match(context, /声明 HTTP method/)
 })
 
-test('T08 adds a fixed-target read-only api_call executor and transport', async () => {
+test('T08 adds a fixed-target api_call executor and transport', async () => {
   const host = await read('lib/index.js')
   const tools = await read('lib/agent-tools.js')
   const executor = await read('lib/executor.js')
@@ -171,6 +168,7 @@ test('T03 package files include Registry runtime artifacts', () => {
     'test/ssrf.test.mjs',
     'test/runtime-context.test.mjs',
     'test/executor.test.mjs',
+    'test/response-redaction-policy.test.mjs',
     'test/oauth2.test.mjs',
     'test/configuration.test.mjs',
     'test/auth.test.mjs',

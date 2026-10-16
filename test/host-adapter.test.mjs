@@ -44,6 +44,23 @@ test('gateway adapts Typert positional parameters and preserves result shapes', 
   assert.deepEqual(targets[0].environmentIds, ['dev'])
 })
 
+test('gateway preserves an existing operation across multiple kit associations', async () => {
+  const { service } = await setup()
+  const gateway = createApiKitGateway(service)
+  await gateway.createKit({ id: 'primary', name: 'Primary', operationIds: [] })
+  await gateway.createKit({ id: 'secondary', name: 'Secondary', operationIds: [] })
+  await gateway.createOperation({ id: 'shared', operationId: 'shared', name: 'Shared', method: 'GET', path: '/shared', serviceTargetId: 'backend', kitIds: ['primary'] })
+
+  await gateway.addOperationsToKit('secondary', ['shared'])
+  assert.deepEqual((await gateway.getOperation('shared')).kitIds, ['primary', 'secondary'])
+  assert.deepEqual((await gateway.listOperations({ kitId: 'secondary' })).map((item) => item.id), ['shared'])
+
+  await gateway.removeOperationsFromKit('primary', ['shared'])
+  assert.deepEqual((await gateway.getOperation('shared')).kitIds, ['secondary'])
+  assert.deepEqual((await gateway.getKit('primary')).operationIds, [])
+  assert.deepEqual((await gateway.getKit('secondary')).operationIds, ['shared'])
+})
+
 test('gateway exposes Auth Profile lifecycle without returning secret values', async () => {
   const { service } = await setup()
   const gateway = createApiKitGateway(service)

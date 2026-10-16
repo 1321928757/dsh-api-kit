@@ -81,7 +81,7 @@ test('api_operations applies policy, filters, stable pagination, and Kit dedupli
   const discovery = createApiKitDiscoveryService(config)
   const all = await discovery.apiOperations({ limit: 100 }, exec())
   assert.equal(all.ok, true)
-  assert.deepEqual(all.operations.map((item) => item.operationId), ['health', 'jobs'])
+  assert.deepEqual(all.operations.map((item) => item.operationId), ['health', 'jobs', 'write'])
   assert.deepEqual(all.operations.find((item) => item.operationId === 'jobs').activeKitIds, ['rpa'])
   const filtered = await discovery.apiOperations({ tag: 'JOBS', method: 'GET', serviceTargetId: 'backend', limit: 1 }, exec())
   assert.equal(filtered.totalCount, 1)
@@ -114,6 +114,25 @@ test('api_describe returns complete safe schema only for discoverable Operation'
   assert.equal(missing.error.code, 'OPERATION_NOT_FOUND')
 })
 
+test('discovery reports persisted response redaction policy without granting a call override', async () => {
+  const { config } = await setup()
+  const discovery = createApiKitDiscoveryService(config)
+  let description = await discovery.apiDescribe({ operationId: 'health' }, exec())
+  assert.equal(description.operation.policy.redactResponse, true)
+  assert.match(description.operation.rules.join(' '), /响应默认.*脱敏/)
+  await config.updateOperation('health', { policy: { redactResponse: false } })
+  const list = await discovery.apiOperations({}, exec())
+  assert.equal(list.operations.find((item) => item.operationId === 'health').redactResponse, false)
+  assert.equal(list.operations.find((item) => item.operationId === 'jobs').redactResponse, true)
+  description = await discovery.apiDescribe({ operationId: 'health' }, exec())
+  assert.equal(description.operation.policy.redactResponse, false)
+  assert.match(description.operation.rules.join(' '), /用户已关闭.*响应脱敏/)
+  assert.match(description.operation.rules.join(' '), /临时 token.*声明参数.*不得覆盖 Host 认证/)
+  assert.equal(description.operation.authentication.type, 'none')
+  await config.updateOperation('health', { policy: { redactResponse: true } })
+  assert.equal((await discovery.apiDescribe({ operationId: 'health' }, exec())).operation.policy.redactResponse, true)
+})
+
 test('stale Kit or environment state is rejected on the next tool call', async () => {
   const { config } = await setup()
   const discovery = createApiKitDiscoveryService(config)
@@ -126,7 +145,7 @@ test('stale Kit or environment state is rejected on the next tool call', async (
 test('policy intersection never grants a disabled write Operation', () => {
   const base = { id: 'write', method: 'POST', enabled: true, policy: { allowAgentCall: true, allowWrite: true }, serviceTargetId: 'backend' }
   const kit = { id: 'rpa', enabled: true, agentEnabled: true, operationIds: ['write'], policy: { allowWrite: false } }
-  assert.equal(operationDiscoverable(base, kit, { serviceTarget: { enabled: true, agentEnabled: true, environmentIds: ['dev'] }, environmentId: 'dev' }), false)
+  assert.equal(operationDiscoverable(base, kit, { serviceTarget: { enabled: true, agentEnabled: true, environmentIds: ['dev'] }, environmentId: 'dev' }), true)
 })
 
 test('raw Agent tools expose strict schemas, safe envelopes, and no sessionId argument', async () => {
@@ -135,6 +154,7 @@ test('raw Agent tools expose strict schemas, safe envelopes, and no sessionId ar
   assert.deepEqual(Object.keys(tools), ['apiKits', 'apiOperations', 'apiDescribe', 'apiCall', 'apiWritePrepare', 'apiWriteExecute'])
   assert.equal(tools.apiCall.parameters.required[0], 'operationId')
   assert.equal('url' in tools.apiCall.parameters.properties, false)
+  assert.equal('confirmationToken' in tools.apiCall.parameters.properties, false)
   assert.deepEqual(tools.apiDescribe.parameters.required, ['operationId'])
   assert.equal('sessionId' in tools.apiOperations.parameters.properties, false)
   assert.equal(tools.apiOperations.output.schema.additionalProperties, true)

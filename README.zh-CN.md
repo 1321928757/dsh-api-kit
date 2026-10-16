@@ -12,7 +12,7 @@
 | --- | --- |
 | **设置 → API Kit** | 创建和维护 Kit、Operation、Environment 和 Service Target；查看安全认证元数据，并预览、显式确认 OpenAPI/Swagger JSON 导入。 |
 | **会话输入栏** | 为当前会话激活一个或多个 API Kit，并选择一个共同的逻辑 Environment。 |
-| **Agent 工具 / 运行时上下文** | 发现已登记 Operation、读取安全调用契约、调用固定 GET/HEAD endpoint，并通过 Host 审批准备或执行受策略约束的写请求。 |
+| **Agent 工具 / 运行时上下文** | 发现已登记 Operation、读取安全调用契约，并在统一 Host 固定目标安全边界下直接调用声明的 HTTP method。 |
 
 ## 功能特性
 
@@ -20,9 +20,9 @@
 - **OpenAPI JSON 导入：** 预览并导入 OpenAPI 3.0/3.1 或 Swagger 2.0 JSON。导入前展示 paths、Tag、Operation、诊断信息以及新增/更新/冲突/跳过分类，确认后通过一次原子 Registry 提交。
 - **Environment 与 Service Target 分离：** Environment 表示 `demo`、`dev` 或生产等逻辑阶段；Service Target 表示逻辑业务服务，并为每个绑定的 Environment 保存独立 endpoint 和网络策略。
 - **会话级启用：** 会话选择保存在 Host 内存中，以权威 session ID 为键。当前激活的所有 Kit 必须共享所选 Environment。
-- **固定目标调用：** Agent 只使用稳定 `operationId`、已声明参数、登记的 Service Target endpoint 和 Operation path。模型不能提供任意 URL、host、代理、重定向策略、session ID 或凭据值。
+- **固定目标调用：** Agent 只使用稳定 `operationId`、已声明参数、登记的 Service Target endpoint 和 Operation path。模型不能提供任意 URL、host、代理、重定向策略、session ID 或覆盖 Host 管理的凭据值。
 - **Host-only 认证：** 设置页可创建、编辑、启用/停用、绑定和删除未被引用的 Auth Profile，支持无认证、Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials。secret 只能通过 Host credentials 流程设置、替换或删除，并且只在请求执行时由 Host 解析。Query API Key 明确标记为可能进入 URL，默认禁止执行。
-- **响应治理与审计：** 响应会进行有界处理和保守脱敏；调用和策略拒绝写入本地白名单 JSONL 审计文件。
+- **响应治理与审计：** 响应始终有界，默认保守脱敏；用户可承担风险并仅对指定 Operation 关闭响应正文脱敏。调用和策略拒绝写入不含请求/响应正文的本地白名单 JSONL 审计文件。
 - **可访问 Web UI：** 设置页和会话选择器使用 DSH 主题令牌，支持键盘/焦点管理、语义化状态反馈、响应式布局、触控尺寸主控件和 reduced-motion。
 - **紧凑会话范围摘要：** 输入栏对较长的 Kit 或 Environment 组合只显示最多 5 个字符，超出部分使用 `...`；完整的安全范围仍可通过按钮 title、辅助名称和选择弹窗获取。
 
@@ -35,23 +35,17 @@
 | `api_kits` | 无业务参数。 | 不联网。返回当前会话的有界 Kit 和 Environment 摘要，包括激活 ID 以及只读/写操作数量。 |
 | `api_operations` | 可选 `query`、精确 `tag`、`method`、`serviceTargetId`、`offset`（默认 `0`）和 `limit`（默认 `20`，最大 `100`）。 | 不联网。只在当前会话激活 Kit 和 Environment 可发现的范围内搜索 Operation。 |
 | `api_describe` | 必填 `api_operations` 返回的 `operationId`。 | 不联网。返回完整的安全调用契约，包括已声明参数、请求/响应 Schema 预览、策略元数据和相对 path；不返回凭据或任意目标 URL。 |
-| `api_call` | 必填 `operationId`；可选 `pathParams`、`query`、`headers` 和 `body` 字段。只接受已声明的 path/query/业务 Header key。 | 执行固定的 **GET/HEAD** Operation。`body`、cookie 参数、未声明 key、受控 Header、无效 Schema 值和策略违规都会被拒绝。写方法只生成确认意图，不发送 HTTP。 |
-| `api_write_prepare` | 必填 `operationId`；可选已声明的 `pathParams`、`query`、`headers` 和 JSON `body`。 | 不联网。仅当 Operation 和当前 Kit 策略都允许写入时，生成短期、单次使用的 Host 确认意图。 |
-| `api_write_execute` | 必填 `operationId` 和 `confirmationToken`；以及准备阶段使用的相同逻辑请求字段。 | 只有 Host 批准匹配意图后才发送一次写请求。token 绑定 Session、Operation、method、Service Target、Environment、请求指纹和当前 Registry 指纹；重放或不匹配会 fail closed。 |
+| `api_call` | 必填 `operationId`；可选 `pathParams`、`query`、`headers` 和 JSON `body` 字段。只接受已声明的 path/query/业务 Header key。 | 通过固定 Host 目标直接执行每个已声明的受支持 HTTP method，包括 POST/PUT/PATCH/DELETE。未声明 key、受控 Header、无效 Schema、任意 URL/host 和网络策略违规都会被拒绝。 |
+| `api_write_prepare` | 旧版兼容描述。 | 返回 `WRITE_CONFIRMATION_UNSUPPORTED`，不联网；请改用 `api_call`。 |
+| `api_write_execute` | 旧版兼容描述。 | 返回 `WRITE_CONFIRMATION_UNSUPPORTED`，不联网，也不接受 confirmation token。 |
 
-推荐的只读流程：
+推荐流程：
 
 ```text
 api_kits → api_operations → api_describe → api_call
 ```
 
-写请求流程：
-
-```text
-api_write_prepare → 人工确认 → api_write_execute
-```
-
-模型没有 approve 工具，不能自行批准确认 token。
+操作员通过导入和启用哪些 Operation 来控制暴露范围。直接写请求仍必须满足声明的 Operation、固定 Service Target/Environment、请求 Schema、Host 认证、网络安全、响应边界、脱敏、取消和审计约束；不再需要独立 write flag 或 confirmation token。
 
 ## 环境要求与兼容性
 
@@ -124,8 +118,8 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 4. **管理或绑定 Auth Profile。** 在 **设置 → API Kit → Auth Profile** 中创建/编辑无认证、Bearer、Basic、Header/Query API Key 或 OAuth2 Client Credentials 的安全元数据，可启用/停用、删除未被引用的 Profile，并通过 Host-only 凭据流程设置、替换或删除 secret。Registry 只保存凭据引用；列表仅展示 `hasSecret`、凭据来源和可写状态，不展示 secret 或 `secretRef`。Query API Key 会明确提示凭据可能进入 URL，默认禁止执行。
 5. **导入 API 定义。** 粘贴 OpenAPI 3.0/3.1 或 Swagger 2.0 JSON，点击 **校验并预览**，选择 Tag 以及已存在的 Service Target/Environment/Auth Profile，处理冲突后点击 **确认并导入**。`servers[].url` 与 Swagger `host/basePath/schemes` 只是展示候选，不会自动变成可信调用目标。
 6. **激活会话范围。** 在会话输入栏打开 **API 套件**，选择一个或多个已启用 Kit，再选择兼容的共同 Environment。
-7. **让 Agent 使用固定流程。** 它应先发现 Operation，再描述必需参数，最后按 `operationId` 调用。建议先使用只读 GET/HEAD；上游支持时，在请求中主动加入筛选、分页或 `LIMIT`。
-8. **将写请求视为独立变更。** 写请求必须同时通过 Operation 与 Kit 策略，并获得 Host 人工批准。准备阶段绝不访问网络，执行阶段只消费一次已批准意图。
+7. **让 Agent 使用固定流程。** 它应先发现 Operation，再描述必需参数，最后按 `operationId` 调用。GET、HEAD、POST、PUT、PATCH、DELETE 使用同一固定目标 Host 执行路径；副作用由 Operation method 元数据明确表示。
+8. **按操作员控制风险。** Registry 中旧的 `allowWrite` 和写 method 字段仍可为迁移兼容而加载，但不再隐藏本来符合条件的 Operation。`api_write_prepare` 和 `api_write_execute` 仅保留不联网的兼容错误，直接写请求使用 `api_call`。
 
 ## 功能导览
 
@@ -138,6 +132,16 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 - **API Kit 工作台：** 创建空 Kit，查看其中的 Operation，启停 Operation，编辑策略；删除被引用对象前先解除关联。
 
 无效 JSON 会在字段附近报错，同时保留草稿。`IMPORT_STALE_PREVIEW` 等导入错误会提供重新预览原始文档的恢复提示。
+
+### 临时 token 接口：按 Operation 关闭响应脱敏
+
+在 **设置 → API 套件 → API Kit 工作台 → 编辑 getToken Operation → Agent 权限与安全** 中，勾选 **关闭此 Operation 的响应脱敏（我理解并承担风险）** 并保存。该选项对应 `policy.redactResponse: false`；默认值为 `true`，旧 Registry 和新导入的 Operation 默认继续脱敏。保存后下次调用生效；取消勾选并保存可恢复脱敏。它属于 Operation，不是整个 Kit 或会话；同一个 Operation 被多个 Kit 引用时共享此配置，且会对所有绑定环境生效。
+
+随后 Agent 可以先调用 `getToken`，再把返回的临时 token 作为后续 Operation 已声明的普通 query/body/业务 Header 参数传入，例如 `query.access_token`。请先在参数 Schema 中声明该字段。不能覆盖 Auth Profile 注入的同名 Query 参数或认证 Header；`Authorization`、`Cookie` 等受控 Header 仍不可作为普通参数。若上游强制要求这些 Header，应由 Host 认证流程处理，而不是通过此开关绕过。
+
+**风险：** 此选项关闭该 Operation 整个响应正文的默认字段、`policy.redactKeys` 和文本模式脱敏，包括错误响应，并非只放开 token 字段。token、密码等内容可能进入模型服务、会话记录和后续工具参数；临时 token 仍是敏感值，重新开启不会清除已有历史。请只对可信且必要的接口启用，并使用短期、最小权限 token。配置/认证安全视图仍保持脱敏；本地审计不记录请求/响应正文。响应大小、深度、数组、字符串、对象 key 限制及损坏/截断 JSON 的拒绝规则保持不变。
+
+该开关只能通过用户配置保存，不能作为 `api_call` 参数临时覆盖。升级插件代码后才能看到新选项；现有安装包不会因源码修改自动更新。
 
 ### 会话输入栏
 
@@ -163,16 +167,16 @@ dsh --profile demo --dump-config | findstr dsh-api-kit
 | Transport | 请求连接到已检查的 IP，同时保留登记 hostname 作为 HTTPS SNI 和 HTTP `Host`。不使用代理、隐式重试或自动重定向。 | HTTP 本身可能不适合敏感数据；部署侧 TLS 和网络控制由使用者负责。 |
 | 请求形状 | 只接受已声明的 path/query/业务 Header 参数。受控 Header、未声明 key、不安全相对路径、cookie 参数和无效 JSON Schema 值会被拒绝。 | 定义和 Schema 必须正确；仍需依赖 API 服务端的授权策略。 |
 | 凭据 | 凭据值由 Host 在请求时解析。安全视图不返回 `secretRef`、密码、token 或 client secret。 | 凭据存储和 DSH Host 仍是可信组件；API 结果属于模型可见的工具输出。 |
-| 读/写策略 | GET/HEAD 是直接只读路径。写请求必须同时满足 Operation `allowAgentCall`、Operation `allowWrite` 与确认策略、当前 Kit 写策略，以及 Host 批准的一次性绑定意图。 | 默认 fail closed，但管理员可以有意开启写入；审批不会扩大目标或凭据访问范围。 |
-| 响应治理 | JSON 按默认规则和 Operation `policy.redactKeys` 递归脱敏；文本、XML、JavaScript、未知类型和非 2xx body 也会保守脱敏。执行深度、数组、字符串、对象 key、字节、超时和响应大小限制；不返回响应 Header。 | 响应限制是应用层读取/投影限制，不保证上游服务器在 Host 接收前就停止扫描或发送。 |
+| 读/写执行 | 所有已声明的受支持 method（包括 POST/PUT/PATCH/DELETE）都使用统一的直接 `api_call` 路径。旧的写策略字段可为迁移兼容而加载，但不再作为发现或执行门槛。 | 操作员控制导入和启用哪些 Operation；每次调用仍必须通过 Host 的固定目标、Schema、认证、网络、响应边界、脱敏、取消和审计校验。 |
+| 响应治理 | 默认 JSON 按规则和 Operation `policy.redactKeys` 递归脱敏，文本、XML、JavaScript、未知类型和非 2xx body 也会保守脱敏；用户可仅对此 Operation 设置 `policy.redactResponse: false` 关闭正文脱敏并承担风险。深度、数组、字符串、对象 key、字节、超时和响应大小限制始终执行；不返回响应 Header。 | 响应限制是应用层读取/投影限制，不保证上游服务器在 Host 接收前就停止扫描或发送。 |
 | 审计 | 调用和策略拒绝投影为白名单 JSONL 记录，不含 URL、path、query、Header、body、凭据、stack 或 error cause；默认懒清理 14 天前文件。 | 审计是 best-effort：写审计失败不会改变业务结果。请保护本机 DSH home 目录。 |
 
 ## 已知限制
 
 - 只导入 **JSON** OpenAPI/Swagger 文档。YAML、URL/Git 导入、remote `$ref` 和不受支持的厂商 Schema 行为不在范围内。本地 JSON Pointer `$ref` 有深度/数量限制；缺失或循环引用会生成诊断。
 - `servers[].url` 以及 Swagger `host/basePath/schemes` 仅用于展示。导入 Operation 必须绑定已登记的 Service Target 及其 Environment endpoint。
-- 固定 Agent 只读路径只执行 GET/HEAD。`OPTIONS` 可以登记/发现，但不是直接 `api_call` 方法。POST/PUT/PATCH/DELETE 必须走独立写确认流程。
-- 写准备阶段不联网，确认意图短期有效、单次使用并绑定当前 Registry。模型不能批准 token；Host 审批不可用时执行会 fail closed。
+- 固定 Agent 路径接受 Operation 声明的每个受支持 HTTP method，包括 GET、HEAD、POST、PUT、PATCH、DELETE 和 OPTIONS；不接受任意 URL、host、代理、重定向、session ID 或未声明请求字段。
+- `api_write_prepare` 和 `api_write_execute` 仅作为旧调用方的离线兼容描述，返回稳定的 `WRITE_CONFIRMATION_UNSUPPORTED`，不会绕过直接 `api_call` 路径。
 - 写请求目前只支持 JSON body。不支持 cookie 参数、multipart/file upload、GraphQL、SSE、WebSocket、自动重定向、隐式重试和独立 MCP Server。
 - 认证支持无认证、Bearer、Basic、Header/Query API Key 和 OAuth2 Client Credentials。Query API Key 默认关闭。OAuth2 不支持 authorization code、PKCE、OIDC discovery、refresh-token 持久化、浏览器回调、任意 token endpoint 或非 HTTPS token endpoint。
 - 响应治理发生在读取和投影过程中。上游的大查询仍可能消耗服务端、网络和 Host 资源；API 支持时请主动加入筛选、分页或 `LIMIT`。
@@ -247,7 +251,7 @@ dsh --profile web --dump-config | findstr dsh-api-kit
 <details>
 <summary><b>为什么写请求被拒绝？</b></summary>
 
-写请求必须使用写 method，同时满足 Operation 与 Kit 写策略、Host 审批，以及准备阶段的准确请求/Registry/Session 绑定。`api_write_prepare` 绝不访问网络。缺少审批、Registry 过期、token 重放、参数改变、Kit/Target 被禁用、凭据缺失、不支持的 body 或审批 UI 不可用都会 fail closed。先用 `api_describe` 检查 Operation，再重新开始 prepare 流程。
+先用 `api_operations` 和 `api_describe` 确认 Operation 的 method、参数和 body Schema，再通过 `api_call` 发起调用。若请求被拒绝，检查 Operation、Kit、Environment 或 Service Target 是否启用，绑定的凭据是否可用，以及参数/body、固定 hostname、DNS/IP、超时和响应限制是否满足。旧的 `api_write_prepare`/`api_write_execute` 会返回 `WRITE_CONFIRMATION_UNSUPPORTED`，不会发送请求。
 
 </details>
 

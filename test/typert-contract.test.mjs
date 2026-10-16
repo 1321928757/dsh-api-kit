@@ -75,7 +75,7 @@ test('Client descriptors match all shared Host RPC calls and omit approval-only 
   const { RPC_METHODS, descriptorSpec, CONTRIBUTION } = extractClientContract()
   const hostByMethod = new Map(host.invocations.map((invocation) => [invocation.method, invocation]))
   const clientByMethod = new Map(CONTRIBUTION.descriptors.map((descriptor) => [descriptor.method, descriptor]))
-  const hostOnly = ['approveWriteConfirmation', 'rejectWriteConfirmation', 'cancelWriteConfirmation']
+  const hostOnly = []
   const serviceMethods = hostEntrySource.match(/const RPC_METHODS = Object\.freeze\(\[([\s\S]*?)\]\)/)?.[1]
     .match(/'([^']+)'/g)?.map((method) => method.slice(1, -1)) ?? []
 
