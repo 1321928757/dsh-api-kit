@@ -1,6 +1,6 @@
 {
   "name": "dsh-api-kit",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DeepSeek Harness API Kit bundle: local-first API Kit configuration, discovery, and fixed-target declared HTTP calls.",
   "type": "module",
   "main": "lib/index.js",

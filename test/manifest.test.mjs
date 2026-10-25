@@ -11,7 +11,7 @@ const packageJson = JSON.parse(await read('package.json'))
 
 test('package metadata declares a DSH web bundle', () => {
   assert.equal(packageJson.name, 'dsh-api-kit')
-  assert.equal(packageJson.version, '0.1.2')
+  assert.equal(packageJson.version, '0.1.3')
   assert.equal(packageJson.type, 'module')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')

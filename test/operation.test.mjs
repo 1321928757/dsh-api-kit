@@ -47,12 +47,22 @@ test('three GET operations can be created, linked to a kit and survive reload', 
   await config.createOperation(operation('status', '/status', { kitIds: ['rpa'] }))
   await config.addOperationsToKit('rpa', ['health'])
   assert.deepEqual(config.getKit('rpa').operationIds, ['jobs', 'status', 'health'])
+  assert.deepEqual(config.getKit('rpa').serviceTargetIds, [])
   assert.deepEqual(config.listOperations({ kitId: 'rpa' }).map((item) => item.id), ['health', 'jobs', 'status'])
   const reloadedStore = createRegistryStore({ fs, filePath: FILE, clock: CLOCK })
   await reloadedStore.load()
   const reloaded = createConfigurationService({ store: reloadedStore, clock: CLOCK })
   assert.deepEqual(reloaded.getKit('rpa').operationIds, ['jobs', 'status', 'health'])
   assert.deepEqual(reloaded.listOperations({ kitId: 'rpa' }).map((item) => item.id), ['health', 'jobs', 'status'])
+})
+
+test('associating an existing Operation expands an explicit Kit target allowlist', async () => {
+  const { config } = await setup()
+  await config.createServiceTarget({ id: 'worker', name: 'Worker', environmentIds: ['dev'], defaultEnvironmentId: 'dev' })
+  await config.createKit({ id: 'scoped', name: 'Scoped', operationIds: [], serviceTargetIds: ['backend'] })
+  await config.createOperation(operation('worker-job', '/worker-job', { serviceTargetId: 'worker' }))
+  await config.addOperationsToKit('scoped', ['worker-job'])
+  assert.deepEqual(config.getKit('scoped').serviceTargetIds, ['backend', 'worker'])
 })
 
 test('an existing operation can be associated with multiple kits and detached atomically', async () => {

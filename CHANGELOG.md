@@ -8,6 +8,21 @@
 - Added an unchecked risk-acknowledgement checkbox to the Operation editor, a visible disabled-redaction badge, and safe policy metadata in discovery/description. Editing preserves existing response policies.
 - Response size/structure limits, fail-closed malformed/truncated JSON, fixed targets, SSRF, schema validation, controlled headers, Host authentication, and payload-free local audit remain unchanged. Unredacted results and temporary tokens may enter model requests and session history.
 
+## 0.1.3
+
+### API Kit 选择器弹层与选择行
+
+- 输入栏 API Kit 弹层与 Operation 行内菜单改用宿主菜单材质（`--dsw-specific-menu`）加背景模糊（`--dsw-menu-backdrop-filter`），不再透过弹层显示背后的对话正文与输入栏 chip；新增 `--dsw-api-kit-popover-bg` 覆盖点，可整层切换为实心表面，不支持 `backdrop-filter` 的宿主自动回退为实心填充。
+- 选择行改为菜单式：去掉逐行描边卡片与可见勾选框列，整行可点击切换，选中由品牌色淡染与行尾绿色“已选择”角标共同表达；原生 checkbox 仅视觉隐藏，保留选择语义、键盘焦点与 44px 命中区。
+- 移除弹层内的“当前会话范围”卡片：未激活提示并入状态行，Operation 与只读/写操作计数并入既有的“共同可用环境”诊断行（仅单套件可精确统计时显示），弹层首屏高度明显下降。
+- 弹层底部操作按钮改为紧凑 ghost 样式：视觉高度 32px、透明描边、hover 才出现底色，主按钮保持实心；44px 触控命中区由透明覆盖层承担，不再靠撑高按钮实现。
+- 弹层 Kit 列表收敛到共享的 `CheckboxChipSelect`（新增 `density`、`showToolbar`、`showLegend`，默认行为不变），与设置页、OpenAPI 导入弹窗和关联已有 Operation 对话框共用同一套选择行与选中态规则。
+- Client 合同测试把弹层 CSS 的像素片段断言替换为表面材质、实心回退与选中态的语义断言；44px 命中区、窄容器和无网络请求断言保持不变。
+
+### Kit 目标范围与关联 Operation 同步
+
+- 关联已有 Operation 时，若 Kit 已配置显式 Service Target 白名单，则同步把新关联 Operation 的目标加入白名单；空目标列表仍表示“不限制目标”。
+- `normalizeRegistry` 会按已关联 Operation 修复显式目标白名单，避免历史数据里通过关联流程加入的 Operation 因白名单缺失而不可见；设置页 Kit 详情同时展示目标范围摘要。
 ## Unreleased / remove-write-operation-gates
 
 - Enabled POST/PUT/PATCH/DELETE Operations are now discoverable and execute directly through `api_call`; legacy `allowWrite` and write-method allowlists remain loadable for migration but no longer gate eligible Operations.

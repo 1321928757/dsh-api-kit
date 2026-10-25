@@ -65,7 +65,7 @@ const expectedFiles = [
 ]
 
 if (packageJson.name !== 'dsh-api-kit') fail('package.name must be dsh-api-kit')
-if (packageJson.version !== '0.1.2') fail('package.version must be 0.1.2')
+if (packageJson.version !== '0.1.3') fail('package.version must be 0.1.3')
 if (packageJson.type !== 'module') fail('package.type must be module')
 if (packageJson.main !== './lib/index.js' && packageJson.main !== 'lib/index.js') fail('package.main must point to lib/index.js')
 if (!packageJson.exports || !packageJson.exports['.'] || !packageJson.exports['./client'] || !packageJson.exports['./typert'] || !packageJson.exports['./package.json']) {

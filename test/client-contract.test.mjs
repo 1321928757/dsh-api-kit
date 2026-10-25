@@ -75,9 +75,11 @@ test('UI-01 presents a concise conservative settings summary', () => {
 })
 
 test('UI-02 explains session scope and common environment diagnostics', () => {
-  for (const marker of ['当前会话范围', '尚未激活 API 套件', 'Operation 范围', '读写风险', '共同可用环境', '当前套件没有共同可用环境', '共同环境暂不可统计', '按统一 Host 规则执行', 'aria-describedby']) {
+  for (const marker of ['尚未激活时 Agent 不会发现 API Operation', '共同可用环境', '当前套件没有共同可用环境', '共同环境暂不可统计', '按统一 Host 规则执行', 'aria-describedby']) {
     assert.match(client, new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')))
   }
+  assert.doesNotMatch(client, /dsh-api-kit-scope-summary/)
+  assert.match(client, /draftScope\.operationCount === null \? '' : ` · \$\{draftScope\.operationCount\} 个 Operation/)
   assert.match(client, /sessionScopeSummary\(kitIds, kits, environmentId, environments\)/)
   assert.match(client, /commonEnvironmentState\(kitIds, kits, environments\)/)
   assert.match(client, /selectedKitNames/)
@@ -281,7 +283,7 @@ test('UI-09 provides compact settings lists, progressive disclosure, and grouped
 })
 
 test('UI-12 supports associating existing Operations and non-destructive Kit removal', () => {
-  for (const marker of ['关联已有 Operation', 'dsh-api-kit-association-title', 'dsh-api-kit-association-description', 'dsh-api-kit-association-operations', '移出当前 Kit', '不会在激活套件中发现它', 'associationCandidateOptions', 'associationDialogRef', 'associationTriggerRef']) assert.match(client, matchLiteral(marker))
+  for (const marker of ['关联已有 Operation', 'dsh-api-kit-association-title', 'dsh-api-kit-association-description', 'dsh-api-kit-association-operations', '移出当前 Kit', '不会在激活套件中发现它', 'associationCandidateOptions', 'associationDialogRef', 'associationTriggerRef', 'serviceTargetNames', '目标范围：未限制']) assert.match(client, matchLiteral(marker))
   assert.match(client, /call\('addOperationsToKit', \{ kitId, operationIds \}\)/)
   assert.match(client, /call\('removeOperationsFromKit', \{ kitId: kit\.id, operationIds: \[operation\.id\] \}\)/)
   assert.match(client, /trapDialogTab\(event, associationDialogRef\)/)
@@ -389,7 +391,7 @@ test('UI-13 reconciles import filters across previews and keeps zero-result guid
 test('UI-14 gives key actions touch-sized hit areas without stretching choice controls', () => {
   assert.match(client, /\.dsh-api-kit-settings \.dsh-api-kit-button\{min-height:44px/)
   assert.match(client, /\.dsh-api-kit-import-step-button\{min-height:44px/)
-  assert.match(client, /\.dsh-api-kit-check,.dsh-api-kit-choice,.dsh-api-kit-selection,.dsh-api-kit-import-mode label\{min-height:44px/)
+  assert.match(client, /\.dsh-api-kit-check,.dsh-api-kit-choice,.dsh-api-kit-import-mode label\{min-height:44px/)
   assert.match(client, /\.dsh-api-kit-import-mode label\{display:flex;align-items:center;gap:7px;min-height:44px/)
   assert.match(client, /button\('添加 Environment'.*'primary'/)
   assert.match(client, /button\('添加 Service Target'.*'secondary'/)
@@ -417,12 +419,31 @@ test('UI-16 bounds picker width, popup density, and settings group defaults', ()
   assert.match(client, /\.dsh-api-kit-popover\{[^}]*max-width:100%[^}]*box-sizing:border-box;font-size:13px;line-height:1\.45/)
   assert.match(client, /\.dsh-api-kit-popover-header h3\{[^}]*font-size:14px/)
   assert.match(client, /\.dsh-api-kit-popover \.dsh-api-kit-status\{[^}]*font-size:12px/)
-  assert.match(client, /\.dsh-api-kit-popover \.dsh-api-kit-selection-title\{[^}]*text-overflow:ellipsis[^}]*white-space:nowrap;font-size:13px/)
-  assert.match(client, /\.dsh-api-kit-popover \.dsh-api-kit-button\{min-height:44px[^}]*font-size:12px/)
+  assert.match(client, /\.dsh-api-kit-popover \.dsh-api-kit-button\{position:relative;min-height:32px[^}]*font-size:12px!important/)
+  assert.match(client, /\.dsh-api-kit-popover \.dsh-api-kit-button::after\{content:'';position:absolute;left:0;right:0;top:50%;height:44px/)
   assert.match(client, /const SETTINGS_GROUP_DEFAULTS = \{ import: false, connection: false, auth: false, workbench: false \}/)
   assert.match(client, /setSettingsGroups\(SETTINGS_GROUP_DEFAULTS\)/)
   assert.doesNotMatch(client, /setSettingsGroups\(kits\.length > 0 \? \{ import: false, connection: false, workbench: true \}/)
   assert.match(client, /const open = Boolean\(settingsGroups\[key\] \|\| forcedOpen\)/)
+})
+
+test('UI-20 renders picker surfaces as menu material with a solid fallback and menu-style rows', () => {
+  assert.match(client, /'data-dsh-api-kit-surface': 'menu-material'/)
+  assert.match(client, /'data-menu-material': 'translucent'/)
+  assert.match(client, /background:var\(--dsw-api-kit-popover-bg,var\(--dsw-specific-menu,var\(--dsw-alias-bg-layer-1\)\)\)/)
+  assert.match(client, /backdrop-filter:var\(--dsw-menu-backdrop-filter,blur\(40px\) saturate\(150%\)\)/)
+  assert.match(client, /@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)\{\.dsh-api-kit-popover,\.dsh-api-kit-operation-menu-panel\{background:var\(--dsw-api-kit-popover-bg,var\(--dsw-alias-bg-layer-1\)\)\}\}/)
+  assert.match(client, /\.dsh-api-kit-choice\.is-checked\{background:color-mix\(in srgb,var\(--dsw-alias-brand-primary\) 8%,transparent\)\}/)
+  assert.match(client, /\.dsh-api-kit-choice:has\(input:focus-visible\)/)
+  assert.match(client, /\.dsh-api-kit-choice-badge\{/)
+  assert.match(client, /\.dsh-api-kit-choice>input\{position:absolute;width:1px;height:1px/)
+  assert.match(client, /\.dsh-api-kit-choice-head\{display:flex;align-items:center;gap:8px;min-width:0\}/)
+  assert.doesNotMatch(client, /\.dsh-api-kit-choice-check\{/)
+  assert.match(client, /density: 'compact'/)
+  assert.match(client, /showLegend: false/)
+  assert.match(client, /showToolbar: false/)
+  assert.doesNotMatch(client, /\.dsh-api-kit-selection\{/)
+  assert.doesNotMatch(client, /className: 'dsh-api-kit-selection/)
 })
 
 test('UI-17 limits the visible picker summary to five characters without shortening accessible details', () => {

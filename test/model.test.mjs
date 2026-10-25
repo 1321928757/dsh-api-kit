@@ -186,6 +186,25 @@ test('empty registry、legacy migration 和 normalizeRegistry 生成统一结构
   assert.equal(registry.operations[0].id, 'get-health')
 })
 
+test('normalizeRegistry repairs explicit Kit target allowlists from linked Operations', () => {
+  const registry = normalizeRegistry({
+    schemaVersion: 1,
+    kits: [{ id: 'ops', name: 'Operations', operationIds: ['health', 'jobs'], serviceTargetIds: ['backend'] }],
+    operations: [
+      { id: 'health', operationId: 'health', method: 'GET', path: '/health', serviceTargetId: 'backend' },
+      { id: 'jobs', operationId: 'jobs', method: 'POST', path: '/jobs', serviceTargetId: 'worker' },
+    ],
+    serviceTargets: [{ id: 'backend', name: 'Backend' }, { id: 'worker', name: 'Worker' }],
+  })
+  assert.deepEqual(registry.kits[0].serviceTargetIds, ['backend', 'worker'])
+  const unrestricted = normalizeRegistry({
+    schemaVersion: 1,
+    kits: [{ id: 'all', name: 'All', operationIds: ['health'], serviceTargetIds: [] }],
+    operations: [{ id: 'health', operationId: 'health', method: 'GET', path: '/health', serviceTargetId: 'backend' }],
+  })
+  assert.deepEqual(unrestricted.kits[0].serviceTargetIds, [])
+})
+
 test('kit/operation link 幂等且不重复', () => {
   const operation = linkOperationToKit({ method: 'GET', path: '/health', kitIds: ['ops'] }, 'ops')
   assert.deepEqual(operation.kitIds, ['ops'])
